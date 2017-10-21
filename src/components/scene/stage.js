@@ -1,36 +1,22 @@
+// @flow
+
+import Zone from '../Zone';
 import lighting from './lighting';
 
 const THREE = require('three');
 
-export default function stage(Scene) {
+export default function stage(zone: Zone) {
 
-	let groundPlane = new THREE.Mesh(
-		new THREE.PlaneGeometry(100000, 100000),
-		new THREE.MeshLambertMaterial({
-			color: '#888'
-		})
-	);
-	groundPlane.receiveShadow = true;
-	groundPlane.position.y = -2;
+	const geo = new THREE.PlaneGeometry(100000, 100000);
+	const mat = new THREE.MeshLambertMaterial({
+		color: 0x888888
+	});
+
+	let groundPlane = new THREE.Mesh(geo, mat);
 	groundPlane.rotation.x -= Math.PI / 2;
-	Scene.add(groundPlane);
 
-	let gridPlane = new THREE.Mesh(
-		new THREE.PlaneGeometry(100, 100),
-		new THREE.MeshLambertMaterial({
-			color: 0xcccccc
-		})
-	);
-	gridPlane.receiveShadow = true;
-	gridPlane.rotation.x -= Math.PI / 2;
-	Scene.add(gridPlane);
+	zone.scene.add(groundPlane);
+	zone.objects.push(groundPlane);
 
-	let Lighting = lighting(Scene);
-	Lighting.setTime(0.333);
-
-	Scene.setTime = Lighting.setTime;
-	Scene.getTime = Lighting.getTime;
-
-	return Scene;
-
+	let Lighting = lighting(zone.scene);
 };

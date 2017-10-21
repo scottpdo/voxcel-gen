@@ -6,6 +6,7 @@ import _ from 'lodash';
 
 import stage from './scene/stage';
 import _Camera from './scene/Camera';
+import Voxelizer from './scene/Voxelizer';
 
 const THREE = require('three');
 
@@ -26,24 +27,37 @@ export default class Zone extends Component<Props, State> {
 
   camera: THREE.PerspectiveCamera;
   canvas: HTMLCanvasElement;
+  destroy: Function;
   init: Function;
   mouse: THREE.Vector2;
   mouseDownCoords: THREE.Vector2;
+  objects: Array<THREE.Object>;
+  onMouseDown: Function;
+  onMouseMove: Function;
+  onMouseUp: Function;
   onResize: Function;
   raycaster: THREE.Raycaster;
   ref: firebase.ref;
   renderer: THREE.WebGlRenderer;
+  rolloverMesh: THREE.Mesh;
   scene: THREE.Scene;
   zone: string;
 
   constructor() {
+
     super();
   
     this.state = {
       exists: 0, // indeterminate... -1 = does not exist, 1 = exists
     };
 
+    this.objects = [];
+
+    this.destroy = this.destroy.bind(this);
     this.init = this.init.bind(this);
+    this.onMouseDown = this.onMouseDown.bind(this);
+    this.onMouseMove = this.onMouseMove.bind(this);
+    this.onMouseUp = this.onMouseUp.bind(this);
     this.onResize = this.onResize.bind(this);
   }
 
@@ -64,6 +78,13 @@ export default class Zone extends Component<Props, State> {
   componentWillUnmount() {
     // TODO: destroy scene, objects, etc.
     window.removeEventListener('resize', this.onResize);
+    if (this.state.exists === 1) this.destroy();
+  }
+
+  destroy() {
+    this.refs.canvas.removeEventListener('mousedown', this.onMouseDown);
+    this.refs.canvas.removeEventListener('mousemove', this.onMouseMove);
+    this.refs.canvas.removeEventListener('mouseup', this.onMouseUp);
   }
 
   init() {
@@ -71,8 +92,13 @@ export default class Zone extends Component<Props, State> {
     // set up reference to this zone and canvas
     this.ref = this.props.db.ref('zones/' + this.zone);
     this.canvas = this.refs.canvas;
-    
-    this.scene = stage(new THREE.Scene());
+
+    this.scene = new THREE.Scene();
+    stage(this);
+
+    this.rolloverMesh = Voxelizer.voxel(0x5555ff, 0.5);
+    this.rolloverMesh.visible = false;
+    this.scene.add(this.rolloverMesh);
 
     this.renderer = new THREE.WebGLRenderer({
 			antialias: true,
@@ -80,14 +106,26 @@ export default class Zone extends Component<Props, State> {
     });
     
 		this.renderer.shadowMap.enabled = true;
-		this.renderer.setPixelRatio( window.devicePixelRatio );
+		// TODO: this.renderer.setPixelRatio( window.devicePixelRatio );
     
     this.camera = _Camera(this.scene, this.renderer);
-    this.raycaster = new THREE.Raycaster(),
-    this.mouse = new THREE.Vector2(-2, -2), // mouse off canvas by default
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2(-2, -2); // mouse off canvas by default
     this.mouseDownCoords = new THREE.Vector2(-2, -2);
-
+    
     this.onResize();
+
+    const renderVoxel = (child) => {
+
+      const mesh = Voxelizer.dataToMesh(child.val());
+  
+      this.scene.add(mesh);
+      this.objects.push(mesh);
+    };
+
+    this.ref.once('value', snapshot => snapshot.forEach(renderVoxel));
+
+    this.ref.on('child_added', renderVoxel);
 
 		let _render = () => {
       
@@ -98,6 +136,10 @@ export default class Zone extends Component<Props, State> {
     };    
 
     _render();
+
+    this.refs.canvas.addEventListener('mousedown', this.onMouseDown);
+    this.refs.canvas.addEventListener('mousemove', this.onMouseMove);
+    this.refs.canvas.addEventListener('mouseup', this.onMouseUp);
     
   }
 
@@ -115,6 +157,69 @@ export default class Zone extends Component<Props, State> {
     this.camera.aspect = WIDTH / HEIGHT;
 		this.camera.updateProjectionMatrix();
 		this.renderer.setSize( WIDTH, HEIGHT );
+  }
+
+  onMouseMove(e: MouseEvent) {
+
+    // for some reason Flow isn't recognizing layerX/layerY on MouseEvent :-(
+    // $FlowFixMe
+    this.mouse.x = ( e.layerX / this.canvas.width ) * 2 - 1;
+    // $FlowFixMe
+    this.mouse.y = -( e.layerY / this.canvas.height ) * 2 + 1;
+
+    let dist = Infinity;
+    let closestObj = null;
+
+    // calculate objects intersecting the picking ray
+    const intersects = [];
+    this.raycaster.intersectObjects( this.objects ).forEach(intersect => {
+      intersects.push(intersect);
+    });
+
+    intersects.forEach(intersect => {
+      if ( intersect.distance < dist ) {
+        dist = intersect.distance;
+        closestObj = intersect;
+      }
+    });
+
+    if ( closestObj !== null ) {
+
+      this.rolloverMesh.visible = true;;
+      this.rolloverMesh.position.copy( closestObj.point ).add( closestObj.face.normal );
+      this.rolloverMesh.position
+        .divideScalar( Voxelizer.UNIT )
+        .floor()
+        .multiplyScalar( Voxelizer.UNIT )
+        .addScalar( Voxelizer.UNIT / 2 );
+      
+        if ( this.rolloverMesh.position.y < 0 ) {
+        this.rolloverMesh.position.y += Voxelizer.UNIT;
+      }
+
+    } else {
+      this.rolloverMesh.visible = false;
+    }
+  }
+
+  onMouseDown(e: MouseEvent) {
+    this.mouseDownCoords.x = this.mouse.x;
+    this.mouseDownCoords.y = this.mouse.y;
+  }
+
+  onMouseUp(e: MouseEvent) {
+    
+    if ( this.mouseDownCoords.x !== this.mouse.x || this.mouseDownCoords.y !== this.mouse.y ) return;
+    if ( this.rolloverMesh.visible === false ) return;
+    
+    const mesh = this.rolloverMesh.clone();
+    mesh.material = new THREE.MeshLambertMaterial({ color: 0x666666 });
+    mesh.visible = true;
+
+    this.scene.add(mesh);
+    this.objects.push(mesh);
+
+    this.ref.push(Voxelizer.meshToData(mesh));
   }
 
   render() {
