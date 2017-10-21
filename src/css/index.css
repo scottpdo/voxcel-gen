@@ -1,0 +1,11 @@
+* {
+  box-sizing: border-box;
+  position: relative;
+}
+
+html, body {
+  font-family: 'Courier New', Courier, monospace;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}

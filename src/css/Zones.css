@@ -1,0 +1,26 @@
+.zones {
+  padding: 40px;
+}
+
+.zones__zone {
+  background: #333;
+  color: #fff;
+  cursor: pointer;
+  display: block;
+  float: left;
+  margin-right: 20px;
+  padding: 20px;
+}
+
+  .zones__zone a { 
+    color: inherit; 
+    text-decoration: none;
+  }
+
+.zones__zone:hover {
+  background: #999;
+}
+
+.zones__zone--add {
+  background: #a66;
+}
