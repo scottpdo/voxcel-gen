@@ -1,5 +1,3 @@
-import _ from 'lodash';
-
 const THREE = require('three');
 
 export default function lighting(Scene) {

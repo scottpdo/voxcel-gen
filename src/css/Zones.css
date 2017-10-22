@@ -2,18 +2,26 @@
   padding: 40px;
 }
 
+.zones__ul {
+  margin: 0;
+  padding: 0;
+}
+
 .zones__zone {
   background: #333;
+  border-radius: 2px;
   color: #fff;
   cursor: pointer;
   display: block;
   float: left;
   margin-right: 20px;
-  padding: 20px;
 }
 
-  .zones__zone a { 
+  .zones__zone a,
+  .zones__zone span { 
     color: inherit; 
+    display: block;
+    padding: 20px;
     text-decoration: none;
   }
 

@@ -4,6 +4,7 @@ import React, { Component } from 'react';
 import * as firebase from 'firebase';
 import _ from 'lodash';
 
+import Manager from './Manager';
 import stage from './scene/stage';
 import _Camera from './scene/Camera';
 import Voxelizer from './scene/Voxelizer';
@@ -12,6 +13,7 @@ const THREE = require('three');
 
 type Props = {
   db: firebase.database,
+  manager: Manager,
   match: {
     params: {
       zone: string
@@ -20,6 +22,7 @@ type Props = {
 };
 
 type State = {
+  color: number,
   exists: number
 }
 
@@ -48,6 +51,7 @@ export default class Zone extends Component<Props, State> {
     super();
   
     this.state = {
+      color: 0x666666,
       exists: 0, // indeterminate... -1 = does not exist, 1 = exists
     };
 
@@ -62,6 +66,15 @@ export default class Zone extends Component<Props, State> {
   }
 
   componentDidMount() {
+    
+    // trigger zoneChange for admin
+    this.props.manager.trigger('zoneChange', this);
+
+    // add colorChange listener
+    this.props.manager.on('colorChange', c => {
+      console.log('colorChange triggered', c);
+      this.setState({ color: c.color })
+    });
 
     this.zone = this.props.match.params.zone;
 
@@ -212,9 +225,9 @@ export default class Zone extends Component<Props, State> {
     if ( this.mouseDownCoords.x !== this.mouse.x || this.mouseDownCoords.y !== this.mouse.y ) return;
     if ( this.rolloverMesh.visible === false ) return;
     
-    const mesh = this.rolloverMesh.clone();
-    mesh.material = new THREE.MeshLambertMaterial({ color: 0x666666 });
-    mesh.visible = true;
+    const mesh = Voxelizer.voxel(this.state.color);
+    const p = this.rolloverMesh.position;
+    mesh.position.set(p.x, p.y, p.z);
 
     this.scene.add(mesh);
     this.objects.push(mesh);

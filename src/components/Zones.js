@@ -3,6 +3,10 @@
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import * as firebase from 'firebase';
+import _ from 'lodash';
+
+import adjs from '../data/adjs';
+import nouns from '../data/nouns';
 
 import '../css/Zones.css';
 
@@ -43,14 +47,13 @@ export default class Zones extends Component<Props, State> {
 
   addZone() {
 
-    let text = "";
-    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  
-    for (var i = 0; i < 12; i++) {
-      text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
+    const adj1 = _.sample(adjs).toLowerCase();
+    const adj2 = _.sample(adjs).toLowerCase();
+    const noun = _.sample(nouns).toLowerCase();
+    
+    const text = adj1 + "-" + adj2 + "-" + noun;
 
-    this.ref.push(text);
+    this.ref.child(text).set(1);
   }
 
   render() {
@@ -59,11 +62,17 @@ export default class Zones extends Component<Props, State> {
       return (
       <li className="zones__zone" key={"zone-" + i}>
         <Link to={"/zone/" + zone}>{zone}</Link>
-      </li>);
+      </li>
+      );
     });
 
-    zones.push(<li className="zones__zone zones__zone--add" onClick={this.addZone.bind(this)}>ADD NEW +</li>);
+    zones.push(<li key="addzone" className="zones__zone zones__zone--add" onClick={this.addZone.bind(this)}><span>ADD NEW +</span></li>);
 
-    return <ul className="zones">{zones}</ul>;
+    return (
+      <div className="zones">
+        <h2>Zones:</h2>
+        <ul className="zones__ul">{zones}</ul>
+      </div>
+    );
   }
 };

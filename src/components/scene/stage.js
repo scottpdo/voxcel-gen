@@ -18,5 +18,5 @@ export default function stage(zone: Zone) {
 	zone.scene.add(groundPlane);
 	zone.objects.push(groundPlane);
 
-	let Lighting = lighting(zone.scene);
+	lighting(zone.scene);
 };

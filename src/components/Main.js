@@ -6,10 +6,12 @@ import { Route } from 'react-router-dom';
 
 import Zones from './Zones';
 import Zone from './Zone';
+import Manager from './Manager';
 import '../css/Main.css';
 
 type Props = {
-	db: firebase.database
+	db: firebase.database,
+	manager: Manager
 };
 
 type State = {};
@@ -31,7 +33,7 @@ export default class Main extends Component<Props, State> {
 		return (
 			<div className="main">
 				<Route exact path="/" render={() => <Zones db={this.props.db} />} />
-				<Route path="/zone/:zone" render={(props) => <Zone db={this.props.db} {...props} />} />
+				<Route path="/zone/:zone" render={(props) => <Zone db={this.props.db} manager={this.props.manager} {...props} />} />
 			</div>
 		);
 	}
