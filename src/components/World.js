@@ -4,6 +4,7 @@ import React, { Component, SyntheticEvent } from 'react';
 import * as firebase from 'firebase';
 import _ from 'lodash';
 
+import CONFIG from '../config';
 import Manager from './Manager';
 import stage from './scene/stage';
 import _Camera from './scene/Camera';
@@ -33,6 +34,7 @@ export default class World extends Component<Props, State> {
   camera: THREE.PerspectiveCamera;
   canvas: HTMLCanvasElement;
   dataRef: firebase.ref;
+  draw: Function;
   init: Function;
   mouse: THREE.Vector2;
   mouseDownCoords: THREE.Vector2;
@@ -45,6 +47,7 @@ export default class World extends Component<Props, State> {
   renderer: THREE.WebGlRenderer;
   rolloverMesh: THREE.Mesh;
   scene: THREE.Scene;
+  screenshot: Function;
   world: string;
 
   constructor() {
@@ -58,14 +61,19 @@ export default class World extends Component<Props, State> {
 
     this.objects = new Objects();
 
+    this.draw = this.draw.bind(this);
     this.init = this.init.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseUp = this.onMouseUp.bind(this);
     this.onResize = this.onResize.bind(this);
+    this.screenshot = this.screenshot.bind(this);
+    window._screenshot = this.screenshot.bind(this);
   }
 
   componentDidMount() {
+
+    console.log('mounted');
     
     // trigger worldChange for admin
     this.props.manager.trigger('worldChange', this);
@@ -77,7 +85,7 @@ export default class World extends Component<Props, State> {
 
     this.world = this.props.match.params.world;
 
-    this.props.db.ref('worldIndex/' + this.world).on('value', (snapshot) => {
+    this.props.db.ref('worldIndex/' + this.world).once('value', (snapshot) => {
       // if no value, then it doesn't exist, serve 404
       if (_.isNil(snapshot.val())) return this.setState({ exists: -1 });
       // if it exists, we're good to go and initialize
@@ -114,6 +122,7 @@ export default class World extends Component<Props, State> {
     this.renderer = new THREE.WebGLRenderer({
 			antialias: true,
       canvas: this.refs.canvas,
+      preserveDrawingBuffer: true
     });
     
 		this.renderer.shadowMap.enabled = true;
@@ -161,16 +170,18 @@ export default class World extends Component<Props, State> {
     // on deleted voxels
     this.dataRef.on('child_removed', unRenderVoxel);
 
-		let _render = () => {
-      
-      this.renderer.render(this.scene, this.camera);
-      this.raycaster.setFromCamera( this.mouse, this.camera );
+		this.draw();
 
-      window.requestAnimationFrame(_render);
-    };    
-
-    _render();
+    setTimeout(this.screenshot, 5000);
     
+  }
+
+  draw() {
+    
+    this.renderer.render(this.scene, this.camera);
+    this.raycaster.setFromCamera( this.mouse, this.camera );
+
+    if (this.state.exists > 0) window.requestAnimationFrame(this.draw);
   }
 
   onResize() {
@@ -290,6 +301,33 @@ export default class World extends Component<Props, State> {
 
     // hide rolloverMesh to prevent placing multiple in same position
     this.rolloverMesh.visible = false;
+  }
+
+  screenshot() {
+
+    const request = new XMLHttpRequest();
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 600;
+    canvas.height = 300;
+
+    // TODO: don't resize gross
+    canvas.getContext('2d').drawImage(this.canvas, 0, 0, canvas.width, canvas.height);
+
+    const data = canvas.toDataURL().split(',')[1];
+
+    request.open('POST', CONFIG.imgurEndpoint, true);
+    request.setRequestHeader('Authorization', 'Client-ID ' + CONFIG.imgurId);
+    request.setRequestHeader('Accept', 'application/json');
+    request.send(data);
+
+    request.onreadystatechange = () => {
+      if (request.status !== 200) return;
+      if (request.responseText.length === 0) return;
+      const res = JSON.parse(request.responseText);
+      const url = res.data.link;
+      this.props.db.ref('worldIndex').child(this.world).set(url);
+    };
   }
 
   render() {

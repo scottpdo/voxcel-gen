@@ -14,8 +14,13 @@ type Props = {
   db: firebase.database
 };
 
+type Pair = {
+  name: string,
+  screenshot: string
+};
+
 type State = {
-  worlds: Array<string>
+  worlds: Array<Pair>
 };
 
 export default class Worlds extends Component<Props, State> {
@@ -37,7 +42,10 @@ export default class Worlds extends Component<Props, State> {
   showWorlds(snapshot: firebase.snapshot) {
     const worlds = [];
     snapshot.forEach(child => {
-      worlds.push(child.key);
+      worlds.push({
+        name: child.key,
+        screenshot: child.val()
+      });
     });
     this.setState({ worlds });
   }
@@ -67,7 +75,8 @@ export default class Worlds extends Component<Props, State> {
     const worlds = this.state.worlds.map((world, i) => {
       return (
       <li className="worlds__world" key={"world-" + i}>
-        <Link to={"/world/" + world}>{world}</Link>
+        <img src={world.screenshot} />
+        <Link to={"/world/" + world.name}>{world.name}</Link>
       </li>
       );
     });
