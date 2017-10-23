@@ -88,7 +88,13 @@ export default class World extends Component<Props, State> {
   }
 
   componentWillUnmount() {
+
     // TODO: destroy scene, objects, etc.
+    this.dataRef.off();
+    
+    // remove colorChange listener
+    this.props.manager.off('colorChange');
+
     window.removeEventListener('resize', this.onResize);
   }
 

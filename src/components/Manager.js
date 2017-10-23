@@ -17,6 +17,12 @@ export default class Manager {
     this.events.push({ evt, cb });
   }
 
+  off(evt: string) {
+    const matches = e => e.evt === evt;
+    const idx = this.events.findIndex(matches);
+    if (idx >= 0) this.events.splice(idx, 1);
+  }
+
   trigger(evt: string, params: Object = {}) {
     this.events.filter(obj => obj.evt === evt).forEach(obj => obj.cb(params));
   }
