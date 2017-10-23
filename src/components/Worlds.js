@@ -8,17 +8,17 @@ import _ from 'lodash';
 import adjs from '../data/adjs';
 import nouns from '../data/nouns';
 
-import '../css/Zones.css';
+import '../css/Worlds.css';
 
 type Props = {
   db: firebase.database
 };
 
 type State = {
-  zones: Array<string>
+  worlds: Array<string>
 };
 
-export default class Zones extends Component<Props, State> {
+export default class Worlds extends Component<Props, State> {
 
   ref: firebase.ref;
 
@@ -27,25 +27,25 @@ export default class Zones extends Component<Props, State> {
     super();
     
     this.state = {
-      zones: []
+      worlds: []
     };
   }
 
   componentDidMount() {
     
-    this.ref = this.props.db.ref('zoneIndex');
+    this.ref = this.props.db.ref('worldIndex');
 
     this.ref.once('value', snapshot => {
       snapshot.forEach(child => {
-        const zone = child.key;
+        const world = child.key;
         this.setState({
-          zones: this.state.zones.concat(zone)
+          worlds: this.state.worlds.concat(world)
         });
       });
     });
   }
 
-  addZone() {
+  addWorld() {
 
     const adj1 = _.sample(adjs).toLowerCase();
     const adj2 = _.sample(adjs).toLowerCase();
@@ -58,20 +58,20 @@ export default class Zones extends Component<Props, State> {
 
   render() {
 
-    const zones = this.state.zones.map((zone, i) => {
+    const worlds = this.state.worlds.map((world, i) => {
       return (
-      <li className="zones__zone" key={"zone-" + i}>
-        <Link to={"/zone/" + zone}>{zone}</Link>
+      <li className="worlds__world" key={"world-" + i}>
+        <Link to={"/world/" + world}>{world}</Link>
       </li>
       );
     });
 
-    zones.push(<li key="addzone" className="zones__zone zones__zone--add" onClick={this.addZone.bind(this)}><span>ADD NEW +</span></li>);
+    worlds.push(<li key="addworld" className="worlds__world worlds__world--add" onClick={this.addWorld.bind(this)}><span>ADD NEW +</span></li>);
 
     return (
-      <div className="zones">
-        <h2>Zones:</h2>
-        <ul className="zones__ul">{zones}</ul>
+      <div className="worlds">
+        <h2>Worlds:</h2>
+        <ul className="worlds__ul">{worlds}</ul>
       </div>
     );
   }

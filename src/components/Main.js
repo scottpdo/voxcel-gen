@@ -4,8 +4,8 @@ import React, { Component } from 'react';
 import * as firebase from 'firebase';
 import { Route } from 'react-router-dom';
 
-import Zones from './Zones';
-import Zone from './Zone';
+import Worlds from './Worlds';
+import World from './World';
 import Manager from './Manager';
 import '../css/Main.css';
 
@@ -18,13 +18,13 @@ type State = {};
 
 export default class Main extends Component<Props, State> {
 
-	zones: Array<String>;
+	worlds: Array<String>;
 
 	constructor() {
 
 		super();
 
-		this.zones = [];
+		this.worlds = [];
 
 	}
 
@@ -32,8 +32,8 @@ export default class Main extends Component<Props, State> {
 		
 		return (
 			<div className="main">
-				<Route exact path="/" render={() => <Zones db={this.props.db} />} />
-				<Route path="/zone/:zone" render={(props) => <Zone db={this.props.db} manager={this.props.manager} {...props} />} />
+				<Route exact path="/" render={() => <Worlds db={this.props.db} />} />
+				<Route path="/world/:world" render={(props) => <World db={this.props.db} manager={this.props.manager} {...props} />} />
 			</div>
 		);
 	}

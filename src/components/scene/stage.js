@@ -1,11 +1,11 @@
 // @flow
 
-import Zone from '../Zone';
+import World from '../World';
 import lighting from './lighting';
 
 const THREE = require('three');
 
-export default function stage(zone: Zone) {
+export default function stage(world: World) {
 
 	const geo = new THREE.PlaneGeometry(100000, 100000);
 	const mat = new THREE.MeshLambertMaterial({
@@ -15,8 +15,8 @@ export default function stage(zone: Zone) {
 	let groundPlane = new THREE.Mesh(geo, mat);
 	groundPlane.rotation.x -= Math.PI / 2;
 
-	zone.scene.add(groundPlane);
-	zone.objects.push(groundPlane);
+	world.scene.add(groundPlane);
+	world.objects.push(groundPlane);
 
-	lighting(zone.scene);
+	lighting(world.scene);
 };

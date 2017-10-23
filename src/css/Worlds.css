@@ -1,13 +1,13 @@
-.zones {
+.worlds {
   padding: 40px;
 }
 
-.zones__ul {
+.worlds__ul {
   margin: 0;
   padding: 0;
 }
 
-.zones__zone {
+.worlds__world {
   background: #333;
   border-radius: 2px;
   color: #fff;
@@ -17,18 +17,18 @@
   margin-right: 20px;
 }
 
-  .zones__zone a,
-  .zones__zone span { 
+  .worlds__world a,
+  .worlds__world span { 
     color: inherit; 
     display: block;
     padding: 20px;
     text-decoration: none;
   }
 
-.zones__zone:hover {
+.worlds__world:hover {
   background: #999;
 }
 
-.zones__zone--add {
+.worlds__world--add {
   background: #a66;
 }

@@ -4,7 +4,7 @@ import React, { Component } from 'react';
 import * as firebase from 'firebase';
 import { Link, Route } from 'react-router-dom';
 
-import Zone from './Zone';
+import World from './World';
 import Manager from './Manager';
 
 import '../css/Admin.css';
@@ -15,34 +15,34 @@ type Props = {
 };
 
 type State = {
-  zone: ?Zone
+  world: ?World
 };
 
 export default class Admin extends Component<Props, State> {
 
   colorChange: Function;
-  leaveZone: Function;
+  leaveWorld: Function;
 
   constructor() {
 
     super();
 
     this.state = {
-      zone: null
+      world: null
     };
 
     this.colorChange = this.colorChange.bind(this);
-    this.leaveZone = this.leaveZone.bind(this);
+    this.leaveWorld = this.leaveWorld.bind(this);
   }
 
   componentDidMount() {
-    this.props.manager.on('zoneChange', zone => {
-      this.setState({ zone });
+    this.props.manager.on('worldChange', world => {
+      this.setState({ world });
     });
   }
 
-  leaveZone() {
-    this.setState({ zone: null });
+  leaveWorld() {
+    this.setState({ world: null });
   }
 
   colorChange(e: Event) {
@@ -60,8 +60,8 @@ export default class Admin extends Component<Props, State> {
 
     return (
       <div className="admin">
-        <Link to="/" className="admin__button" onClick={this.leaveZone}>Main</Link>
-        {this.state.zone !== null ? colorpicker : null}
+        <Link to="/" className="admin__button" onClick={this.leaveWorld}>Main</Link>
+        {this.state.world !== null ? colorpicker : null}
       </div>
     );
   }

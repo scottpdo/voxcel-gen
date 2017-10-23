@@ -1,6 +1,6 @@
 // @flow
 
-import React, { Component } from 'react';
+import React, { Component, SyntheticEvent } from 'react';
 import * as firebase from 'firebase';
 import _ from 'lodash';
 
@@ -16,7 +16,7 @@ type Props = {
   manager: Manager,
   match: {
     params: {
-      zone: string
+      world: string
     }
   }
 };
@@ -26,11 +26,10 @@ type State = {
   exists: number
 }
 
-export default class Zone extends Component<Props, State> {
+export default class World extends Component<Props, State> {
 
   camera: THREE.PerspectiveCamera;
   canvas: HTMLCanvasElement;
-  destroy: Function;
   init: Function;
   mouse: THREE.Vector2;
   mouseDownCoords: THREE.Vector2;
@@ -44,7 +43,7 @@ export default class Zone extends Component<Props, State> {
   renderer: THREE.WebGlRenderer;
   rolloverMesh: THREE.Mesh;
   scene: THREE.Scene;
-  zone: string;
+  world: string;
 
   constructor() {
 
@@ -57,7 +56,6 @@ export default class Zone extends Component<Props, State> {
 
     this.objects = [];
 
-    this.destroy = this.destroy.bind(this);
     this.init = this.init.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
@@ -67,18 +65,17 @@ export default class Zone extends Component<Props, State> {
 
   componentDidMount() {
     
-    // trigger zoneChange for admin
-    this.props.manager.trigger('zoneChange', this);
+    // trigger worldChange for admin
+    this.props.manager.trigger('worldChange', this);
 
     // add colorChange listener
     this.props.manager.on('colorChange', c => {
-      console.log('colorChange triggered', c);
       this.setState({ color: c.color })
     });
 
-    this.zone = this.props.match.params.zone;
+    this.world = this.props.match.params.world;
 
-    this.props.db.ref('zoneIndex/' + this.zone).on('value', (snapshot) => {
+    this.props.db.ref('worldIndex/' + this.world).on('value', (snapshot) => {
       // if no value, then it doesn't exist, serve 404
       if (_.isNil(snapshot.val())) return this.setState({ exists: -1 });
       // if it exists, we're good to go and initialize
@@ -91,19 +88,12 @@ export default class Zone extends Component<Props, State> {
   componentWillUnmount() {
     // TODO: destroy scene, objects, etc.
     window.removeEventListener('resize', this.onResize);
-    if (this.state.exists === 1) this.destroy();
-  }
-
-  destroy() {
-    this.refs.canvas.removeEventListener('mousedown', this.onMouseDown);
-    this.refs.canvas.removeEventListener('mousemove', this.onMouseMove);
-    this.refs.canvas.removeEventListener('mouseup', this.onMouseUp);
   }
 
   init() {
 
-    // set up reference to this zone and canvas
-    this.ref = this.props.db.ref('zones/' + this.zone);
+    // set up reference to this world and canvas
+    this.ref = this.props.db.ref('worlds/' + this.world);
     this.canvas = this.refs.canvas;
 
     this.scene = new THREE.Scene();
@@ -149,16 +139,12 @@ export default class Zone extends Component<Props, State> {
     };    
 
     _render();
-
-    this.refs.canvas.addEventListener('mousedown', this.onMouseDown);
-    this.refs.canvas.addEventListener('mousemove', this.onMouseMove);
-    this.refs.canvas.addEventListener('mouseup', this.onMouseUp);
     
   }
 
   onResize() {
     
-    // only run if we've found a zone
+    // only run if we've found a world
     if (this.state.exists < 1) return;
     
     const WIDTH = this.refs.container.clientWidth;
@@ -172,16 +158,21 @@ export default class Zone extends Component<Props, State> {
 		this.renderer.setSize( WIDTH, HEIGHT );
   }
 
-  onMouseMove(e: MouseEvent) {
+  onMouseMove(e: SyntheticEvent) {
 
-    // for some reason Flow isn't recognizing layerX/layerY on MouseEvent :-(
+    const rect = this.canvas.getBoundingClientRect();
+
     // $FlowFixMe
-    this.mouse.x = ( e.layerX / this.canvas.width ) * 2 - 1;
+    this.mouse.x = ( (e.clientX - rect.x ) / this.canvas.width ) * 2 - 1;
     // $FlowFixMe
-    this.mouse.y = -( e.layerY / this.canvas.height ) * 2 + 1;
+    this.mouse.y = -( (e.clientY - rect.y ) / this.canvas.height ) * 2 + 1;
 
     let dist = Infinity;
     let closestObj = null;
+
+    this.objects.forEach(object => {
+      object.scale.set(1, 1, 1);
+    });
 
     // calculate objects intersecting the picking ray
     const intersects = [];
@@ -196,9 +187,11 @@ export default class Zone extends Component<Props, State> {
       }
     });
 
-    if ( closestObj !== null ) {
+    if ( closestObj === null ) return;
 
-      this.rolloverMesh.visible = true;;
+    if ( !e.shiftKey ) {
+
+      this.rolloverMesh.visible = true;
       this.rolloverMesh.position.copy( closestObj.point ).add( closestObj.face.normal );
       this.rolloverMesh.position
         .divideScalar( Voxelizer.UNIT )
@@ -224,6 +217,8 @@ export default class Zone extends Component<Props, State> {
     
     if ( this.mouseDownCoords.x !== this.mouse.x || this.mouseDownCoords.y !== this.mouse.y ) return;
     if ( this.rolloverMesh.visible === false ) return;
+
+    // TODO: delete voxel
     
     const mesh = Voxelizer.voxel(this.state.color);
     const p = this.rolloverMesh.position;
@@ -247,7 +242,7 @@ export default class Zone extends Component<Props, State> {
     if (this.state.exists === 0) 
       return <div style={textStyle}>Loading...</div>;
     if (this.state.exists === -1) 
-      return <div style={textStyle}>404 - Couldn't find zone.</div>;
+      return <div style={textStyle}>404 - Couldn't find world.</div>;
     
     const style = {
       height: '100%',
@@ -256,7 +251,10 @@ export default class Zone extends Component<Props, State> {
     
     return (
       <div style={style} ref="container">
-        <canvas ref="canvas" />
+        <canvas ref="canvas" 
+          onMouseDown={this.onMouseDown} 
+          onMouseMove={this.onMouseMove}
+          onMouseUp={this.onMouseUp} />
       </div>
     );
   }
