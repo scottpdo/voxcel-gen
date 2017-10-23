@@ -1,15 +1,10 @@
 // @flow
 
+import MeshData from './MeshData';
+
 const THREE = require('three');
 
 const UNIT = 50;
-
-type meshData = {
-  x: number,
-  y: number,
-  z: number,
-  color: ?number
-};
 
 const Voxelizer = {
 
@@ -27,7 +22,7 @@ const Voxelizer = {
     return new THREE.Mesh(geo, mat);
   },
 
-  dataToMesh(data: meshData): THREE.Mesh {
+  dataToMesh(data: MeshData): THREE.Mesh {
     
     const x = (data.x * UNIT) + UNIT / 2;
     const y = (data.y * UNIT) + UNIT / 2;
@@ -40,7 +35,7 @@ const Voxelizer = {
     return mesh;
   },
 
-  meshToData(mesh: THREE.Mesh): meshData {
+  meshToData(mesh: THREE.Mesh): MeshData {
 
     const p = mesh.position;
     const x = (p.x - UNIT / 2) / UNIT;
@@ -48,7 +43,10 @@ const Voxelizer = {
     const z = (p.z - UNIT / 2) / UNIT;
     const color = mesh.material.color.getHex();
 
-    return { x, y, z, color };
+    const result = new MeshData(x, y, z);
+    result.color = color;
+
+    return result;
   }
 };
 

@@ -2,7 +2,7 @@
 
 import React, { Component } from 'react';
 import * as firebase from 'firebase';
-import { Link, Route } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 import World from './World';
 import Manager from './Manager';
@@ -52,16 +52,25 @@ export default class Admin extends Component<Props, State> {
 
   render() {
 
-    const colorpicker = <input 
-      className="admin__button" 
-      type="color" 
-      ref="colorpicker" 
-      onInput={this.colorChange} />;
+    const colorpicker = (
+      <div>
+        <label htmlFor="admin__colorpicker" className="admin__label">Color</label>
+        <input 
+          className="admin__button admin__button--colorpicker" 
+          id="admin__colorpicker"
+          type="color" 
+          ref="colorpicker" 
+          defaultValue="#666666"
+          onInput={this.colorChange} />
+      </div>
+    );
+
+    const exists = this.state.world !== null;
 
     return (
       <div className="admin">
         <Link to="/" className="admin__button" onClick={this.leaveWorld}>Main</Link>
-        {this.state.world !== null ? colorpicker : null}
+        {exists ? colorpicker : null}
       </div>
     );
   }

@@ -35,12 +35,10 @@ export default class Worlds extends Component<Props, State> {
     
     this.ref = this.props.db.ref('worldIndex');
 
-    this.ref.once('value', snapshot => {
-      snapshot.forEach(child => {
-        const world = child.key;
-        this.setState({
-          worlds: this.state.worlds.concat(world)
-        });
+    this.ref.on('child_added', child => {
+      const world = child.key;
+      this.setState({
+        worlds: this.state.worlds.concat(world)
       });
     });
   }

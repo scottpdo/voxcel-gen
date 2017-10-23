@@ -8,6 +8,7 @@ import Manager from './Manager';
 import stage from './scene/stage';
 import _Camera from './scene/Camera';
 import Voxelizer from './scene/Voxelizer';
+import MeshData from './scene/MeshData';
 
 const THREE = require('three');
 
@@ -30,6 +31,7 @@ export default class World extends Component<Props, State> {
 
   camera: THREE.PerspectiveCamera;
   canvas: HTMLCanvasElement;
+  dataRef: firebase.ref;
   init: Function;
   mouse: THREE.Vector2;
   mouseDownCoords: THREE.Vector2;
@@ -39,7 +41,6 @@ export default class World extends Component<Props, State> {
   onMouseUp: Function;
   onResize: Function;
   raycaster: THREE.Raycaster;
-  ref: firebase.ref;
   renderer: THREE.WebGlRenderer;
   rolloverMesh: THREE.Mesh;
   scene: THREE.Scene;
@@ -93,7 +94,7 @@ export default class World extends Component<Props, State> {
   init() {
 
     // set up reference to this world and canvas
-    this.ref = this.props.db.ref('worlds/' + this.world);
+    this.dataRef = this.props.db.ref('worlds/' + this.world);
     this.canvas = this.refs.canvas;
 
     this.scene = new THREE.Scene();
@@ -126,9 +127,30 @@ export default class World extends Component<Props, State> {
       this.objects.push(mesh);
     };
 
-    this.ref.once('value', snapshot => snapshot.forEach(renderVoxel));
+    const unRenderVoxel = (child) => {
 
-    this.ref.on('child_added', renderVoxel);
+      const data = MeshData.fromObject(child.val());
+      const mesh = Voxelizer.dataToMesh(data);
+      let match = null;
+
+      for (let obj of this.objects) {
+        if (obj.position.equals(mesh.position)) {
+          match = obj;
+          break;
+        }
+      }
+
+      if (!_.isNil(match)) this.scene.remove(match);
+    };
+
+    // on initial load
+    this.dataRef.once('value', snapshot => snapshot.forEach(renderVoxel));
+
+    // on subsequent new voxels
+    this.dataRef.on('child_added', renderVoxel);
+
+    // on deleted voxels
+    this.dataRef.on('child_removed', unRenderVoxel);
 
 		let _render = () => {
       
@@ -169,10 +191,6 @@ export default class World extends Component<Props, State> {
 
     let dist = Infinity;
     let closestObj = null;
-
-    this.objects.forEach(object => {
-      object.scale.set(1, 1, 1);
-    });
 
     // calculate objects intersecting the picking ray
     const intersects = [];
@@ -216,18 +234,53 @@ export default class World extends Component<Props, State> {
   onMouseUp(e: MouseEvent) {
     
     if ( this.mouseDownCoords.x !== this.mouse.x || this.mouseDownCoords.y !== this.mouse.y ) return;
-    if ( this.rolloverMesh.visible === false ) return;
 
-    // TODO: delete voxel
+    // delete voxel
+    if (e.shiftKey) {
+      // find closest
+      // calculate objects intersecting the picking ray
+      let dist = Infinity;
+      let closestObj = null;
+      const intersects = [];
+
+      this.raycaster.intersectObjects( this.objects ).forEach(intersect => {
+        intersects.push(intersect);
+      });
+
+      intersects.forEach(intersect => {
+        if ( intersect.distance < dist ) {
+          dist = intersect.distance;
+          closestObj = intersect;
+        }
+      });
+
+      if ( closestObj === null ) return;
+
+      const data = Voxelizer.meshToData(closestObj.object);
+      
+      // find matching data from ref
+      this.dataRef.once('value', snapshot => {
+        snapshot.forEach(child => {
+          const test = MeshData.fromObject(child.val());
+          if (test.matches(data)) this.dataRef.child(child.key).remove();
+        });
+      });
+
+      return;
+    }
+
+    // if not deleting, and the rolloverMesh is not visible,
+    // don't do anything
+    if ( this.rolloverMesh.visible === false ) return;
     
     const mesh = Voxelizer.voxel(this.state.color);
     const p = this.rolloverMesh.position;
     mesh.position.set(p.x, p.y, p.z);
 
-    this.scene.add(mesh);
-    this.objects.push(mesh);
+    this.dataRef.push(Voxelizer.meshToData(mesh));
 
-    this.ref.push(Voxelizer.meshToData(mesh));
+    // hide rolloverMesh to prevent placing multiple in same position
+    this.rolloverMesh.visible = false;
   }
 
   render() {

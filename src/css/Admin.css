@@ -19,6 +19,7 @@
   font-size: 12px;
   font-family: 'Courier New', Courier, monospace;
   padding: 8px;
+  margin-bottom: 8px;
   width: 100%;
   text-align: center;
   text-decoration: none;
@@ -26,4 +27,12 @@
 
 .admin__button:hover {
   background: #999;
+}
+
+.admin__button--colorpicker {
+  padding: 0;
+}
+
+.admin__label {
+  font-size: 12px;
 }
