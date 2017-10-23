@@ -16,7 +16,7 @@ export default function stage(world: World) {
 	groundPlane.rotation.x -= Math.PI / 2;
 
 	world.scene.add(groundPlane);
-	world.objects.push(groundPlane);
+	world.objects.add(groundPlane);
 
 	lighting(world.scene);
 };

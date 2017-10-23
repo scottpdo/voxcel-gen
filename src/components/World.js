@@ -9,6 +9,7 @@ import stage from './scene/stage';
 import _Camera from './scene/Camera';
 import Voxelizer from './scene/Voxelizer';
 import MeshData from './scene/MeshData';
+import Objects from './scene/Objects';
 
 const THREE = require('three');
 
@@ -35,7 +36,7 @@ export default class World extends Component<Props, State> {
   init: Function;
   mouse: THREE.Vector2;
   mouseDownCoords: THREE.Vector2;
-  objects: Array<THREE.Object>;
+  objects: Objects;
   onMouseDown: Function;
   onMouseMove: Function;
   onMouseUp: Function;
@@ -55,7 +56,7 @@ export default class World extends Component<Props, State> {
       exists: 0, // indeterminate... -1 = does not exist, 1 = exists
     };
 
-    this.objects = [];
+    this.objects = new Objects();
 
     this.init = this.init.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
@@ -124,7 +125,7 @@ export default class World extends Component<Props, State> {
       const mesh = Voxelizer.dataToMesh(child.val());
   
       this.scene.add(mesh);
-      this.objects.push(mesh);
+      this.objects.add(mesh);
     };
 
     const unRenderVoxel = (child) => {
@@ -133,18 +134,20 @@ export default class World extends Component<Props, State> {
       const mesh = Voxelizer.dataToMesh(data);
       let match = null;
 
-      for (let obj of this.objects) {
+      for (let obj of this.objects.all()) {
         if (obj.position.equals(mesh.position)) {
           match = obj;
           break;
         }
       }
 
-      if (!_.isNil(match)) this.scene.remove(match);
+      if (match !== null) {
+        match.geometry.dispose();
+        match.material.dispose();
+        this.scene.remove(match);
+        this.objects.remove(match);
+      }
     };
-
-    // on initial load
-    this.dataRef.once('value', snapshot => snapshot.forEach(renderVoxel));
 
     // on subsequent new voxels
     this.dataRef.on('child_added', renderVoxel);
@@ -194,7 +197,7 @@ export default class World extends Component<Props, State> {
 
     // calculate objects intersecting the picking ray
     const intersects = [];
-    this.raycaster.intersectObjects( this.objects ).forEach(intersect => {
+    this.raycaster.intersectObjects( this.objects.all() ).forEach(intersect => {
       intersects.push(intersect);
     });
 
@@ -243,7 +246,7 @@ export default class World extends Component<Props, State> {
       let closestObj = null;
       const intersects = [];
 
-      this.raycaster.intersectObjects( this.objects ).forEach(intersect => {
+      this.raycaster.intersectObjects( this.objects.all() ).forEach(intersect => {
         intersects.push(intersect);
       });
 

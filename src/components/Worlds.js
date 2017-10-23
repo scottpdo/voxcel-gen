@@ -20,7 +20,8 @@ type State = {
 
 export default class Worlds extends Component<Props, State> {
 
-  ref: firebase.ref;
+  dataRef: firebase.ref;
+  showWorlds: Function;
 
   constructor() {
     
@@ -29,18 +30,25 @@ export default class Worlds extends Component<Props, State> {
     this.state = {
       worlds: []
     };
+
+    this.showWorlds = this.showWorlds.bind(this);
+  }
+
+  showWorlds(snapshot: firebase.snapshot) {
+    const worlds = [];
+    snapshot.forEach(child => {
+      worlds.push(child.key);
+    });
+    this.setState({ worlds });
   }
 
   componentDidMount() {
-    
-    this.ref = this.props.db.ref('worldIndex');
+    this.dataRef = this.props.db.ref('worldIndex');
+    this.dataRef.on('value', this.showWorlds);
+  }
 
-    this.ref.on('child_added', child => {
-      const world = child.key;
-      this.setState({
-        worlds: this.state.worlds.concat(world)
-      });
-    });
+  componentWillUnMount() {
+    this.dataRef.off();
   }
 
   addWorld() {
@@ -51,7 +59,7 @@ export default class Worlds extends Component<Props, State> {
     
     const text = adj1 + "-" + adj2 + "-" + noun;
 
-    this.ref.child(text).set(1);
+    this.dataRef.child(text).set(1);
   }
 
   render() {
