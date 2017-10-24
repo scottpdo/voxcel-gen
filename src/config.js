@@ -5,7 +5,7 @@ const config = {
     authDomain: "voxcel-gen.firebaseapp.com",
     databaseURL: "https://voxcel-gen.firebaseio.com",
     projectId: "voxcel-gen",
-    storageBucket: "",
+    storageBucket: "voxcel-gen.appspot.com",
     messagingSenderId: "255409478423",
   },
   firebaseDev: {
