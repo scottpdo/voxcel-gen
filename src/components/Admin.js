@@ -74,10 +74,13 @@ export default class Admin extends Component<Props, State> {
     );
 
     const typeSelect = (
-      <select onChange={this.typeChange} ref="typeSelect">
-        <option selected value={MeshData.VOXEL}>Voxel</option>
-        <option value={MeshData.SPHERE}>Sphere</option>
-      </select>
+      <div>
+        <label htmlFor="admin__select" className="admin__label">Type</label>
+        <select onChange={this.typeChange} ref="typeSelect" class="admin__select" id="admin_select">
+          <option selected value={MeshData.VOXEL}>Voxel</option>
+          <option value={MeshData.SPHERE}>Sphere</option>
+        </select>
+      </div>
     )
 
     const exists = this.state.world !== null;

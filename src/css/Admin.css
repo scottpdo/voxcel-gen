@@ -36,3 +36,8 @@
 .admin__label {
   font-size: 12px;
 }
+
+.admin__select {
+  display: block;
+  width: 100%;
+}
