@@ -73,10 +73,13 @@ export default class Worlds extends Component<Props, State> {
   render() {
 
     const worlds = this.state.worlds.map((world, i) => {
+      const style = { backgroundImage: "url(" + world.screenshot + ")" };
       return (
       <li className="worlds__world" key={"world-" + i}>
-        <img src={world.screenshot} />
-        <Link to={"/world/" + world.name}>{world.name}</Link>
+        <Link to={"/world/" + world.name}>
+          <div className="worlds__img" style={style}></div>
+          {world.name}
+        </Link>
       </li>
       );
     });

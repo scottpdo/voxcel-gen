@@ -7,9 +7,8 @@ const config = {
     storageBucket: "",
     messagingSenderId: "255409478423",
   },
-  imgurId: '82c773ef17af17f',
-  imgurEndpoint: 'https://api.imgur.com/3/image',
-  imgurPrefix: 'https://imgur.com/gallery',
+  imgurId: 'cdc948aa8050bee',
+  imgurEndpoint: 'https://api.imgur.com/3/image'
 };
 
 export default config;

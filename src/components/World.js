@@ -48,6 +48,7 @@ export default class World extends Component<Props, State> {
   rolloverMesh: THREE.Mesh;
   scene: THREE.Scene;
   screenshot: Function;
+  screenshotInterval: number
   world: string;
 
   constructor() {
@@ -68,12 +69,9 @@ export default class World extends Component<Props, State> {
     this.onMouseUp = this.onMouseUp.bind(this);
     this.onResize = this.onResize.bind(this);
     this.screenshot = this.screenshot.bind(this);
-    window._screenshot = this.screenshot.bind(this);
   }
 
   componentDidMount() {
-
-    console.log('mounted');
     
     // trigger worldChange for admin
     this.props.manager.trigger('worldChange', this);
@@ -92,16 +90,24 @@ export default class World extends Component<Props, State> {
       this.setState({ exists: 1 }, this.init);
     });
 
+    setTimeout(this.screenshot, 5000);
+
+    this.screenshotInterval = setInterval(this.screenshot, 60 * 1000);
+
     window.addEventListener('resize', this.onResize);
   }
 
   componentWillUnmount() {
+
+    clearInterval(this.screenshotInterval);
 
     // TODO: destroy scene, objects, etc.
     this.dataRef.off();
     
     // remove colorChange listener
     this.props.manager.off('colorChange');
+
+    this.setState({ exists: 0 });
 
     window.removeEventListener('resize', this.onResize);
   }
@@ -171,8 +177,6 @@ export default class World extends Component<Props, State> {
     this.dataRef.on('child_removed', unRenderVoxel);
 
 		this.draw();
-
-    setTimeout(this.screenshot, 5000);
     
   }
 
@@ -305,13 +309,25 @@ export default class World extends Component<Props, State> {
 
   screenshot() {
 
+    if (this.state.exists < 1) return;
+
     const request = new XMLHttpRequest();
 
     const canvas = document.createElement('canvas');
     canvas.width = 600;
-    canvas.height = 300;
+    canvas.height = 600 * this.canvas.height / this.canvas.width;
 
-    // TODO: don't resize gross
+    // save state of rolloverMesh and camera
+    const prevRolloverState = this.rolloverMesh.visible;
+    const prevCamera = this.camera.clone();
+
+    // hide rolloverMesh, look top down
+    this.rolloverMesh.visible = false;
+    this.camera.position.set(0, 1000, 0);
+    this.camera.lookAt(new THREE.Vector3());
+
+    this.draw();
+
     canvas.getContext('2d').drawImage(this.canvas, 0, 0, canvas.width, canvas.height);
 
     const data = canvas.toDataURL().split(',')[1];
@@ -322,12 +338,19 @@ export default class World extends Component<Props, State> {
     request.send(data);
 
     request.onreadystatechange = () => {
-      if (request.status !== 200) return;
+
+      if (request.status !== 200) return console.log(request.responseText);
       if (request.responseText.length === 0) return;
+
       const res = JSON.parse(request.responseText);
       const url = res.data.link;
       this.props.db.ref('worldIndex').child(this.world).set(url);
     };
+
+    // restore everything
+    this.rolloverMesh.visible = prevRolloverState;
+    this.camera.copy(prevCamera);
+    this.draw();
   }
 
   render() {

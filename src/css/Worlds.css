@@ -16,31 +16,36 @@
   float: left;
   margin: 0 20px 20px 0;
   width: 30%;
+  transition: 0.15s;
 }
 
   .worlds__world:nth-child(3n + 1) {
     clear: left;
   }
 
-  .worlds__world img {
-    height: auto;
+  .worlds__img {
+    background-size: cover;
+    background-position: 50% 50%;
+    padding-bottom: 50%;
+    margin: 0 auto 6px;
     max-width: 100%;
+    transition: 0.15s;
   }
 
   .worlds__world a,
   .worlds__world span { 
     color: inherit; 
     display: block;
-    padding: 20px;
+    padding: 10px;
     text-decoration: none;
   }
 
 .worlds__world:hover {
-  background: #999;
+  background: #888;
 }
 
 .worlds__world:hover img {
-  opacity: 0.5;
+  filter: contrast(150%);
 }
 
 .worlds__world--add {
