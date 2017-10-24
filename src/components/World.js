@@ -26,7 +26,8 @@ type Props = {
 
 type State = {
   color: number,
-  exists: number
+  exists: number,
+  type: number
 }
 
 export default class World extends Component<Props, State> {
@@ -58,6 +59,7 @@ export default class World extends Component<Props, State> {
     this.state = {
       color: 0x666666,
       exists: 0, // indeterminate... -1 = does not exist, 1 = exists
+      type: MeshData.VOXEL,
     };
 
     this.objects = new Objects();
@@ -79,6 +81,11 @@ export default class World extends Component<Props, State> {
     // add colorChange listener
     this.props.manager.on('colorChange', c => {
       this.setState({ color: c.color })
+    });
+
+    // add typeChange listener
+    this.props.manager.on('typeChange', c => {
+      this.setState({ type: c.type })
     });
 
     this.world = this.props.match.params.world;
@@ -106,6 +113,9 @@ export default class World extends Component<Props, State> {
     
     // remove colorChange listener
     this.props.manager.off('colorChange');
+
+    // remove typeChange listener
+    this.props.manager.off('typeChange');
 
     this.setState({ exists: 0 });
 
@@ -297,7 +307,13 @@ export default class World extends Component<Props, State> {
     // don't do anything
     if ( this.rolloverMesh.visible === false ) return;
     
-    const mesh = Voxelizer.voxel(this.state.color);
+    let mesh;
+    if (this.state.type === MeshData.SPHERE) {
+      mesh = Voxelizer.sphere(this.state.color);
+      console.log(Voxelizer.meshToData(mesh));
+    } else {
+      mesh = Voxelizer.voxel(this.state.color);
+    }
     const p = this.rolloverMesh.position;
     mesh.position.set(p.x, p.y, p.z);
 

@@ -8,6 +8,10 @@ export default class MeshData {
   y: number;
   z: number;
   color: ?number;
+  type: ?number;
+
+  static VOXEL = 0;
+  static SPHERE = 1;
 
   constructor(x: number, y: number, z: number) {
     this.x = x;
@@ -23,6 +27,7 @@ export default class MeshData {
     if (obj.hasOwnProperty('y') && _.isNumber(obj.y)) result.y = obj.y;
     if (obj.hasOwnProperty('z') && _.isNumber(obj.z)) result.z = obj.z;
     if (obj.hasOwnProperty('color') && _.isNumber(obj.color)) result.color = obj.color;
+    if (obj.hasOwnProperty('type') && _.isNumber(obj.type)) result.type = obj.type;
     
     return result;
   }
@@ -32,6 +37,7 @@ export default class MeshData {
     const result = new MeshData(this.x, this.y, this.z);
     
     if (!_.isNil(this.color)) result.color = this.color;
+    if (!_.isNil(this.type)) result.type = this.type;
     
     return result;
   }
@@ -44,6 +50,10 @@ export default class MeshData {
 
     if (!_.isNil(this.color) && !_.isNil(other.color)) {
       if (this.color !== other.color) return false;
+    }
+
+    if (!_.isNil(this.type) && !_.isNil(other.type)) {
+      if (this.type !== other.type) return false;
     }
     
     return true;

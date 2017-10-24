@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 
 import World from './World';
 import Manager from './Manager';
+import MeshData from './scene/MeshData';
 
 import '../css/Admin.css';
 
@@ -22,6 +23,7 @@ export default class Admin extends Component<Props, State> {
 
   colorChange: Function;
   leaveWorld: Function;
+  typeChange: Function;
 
   constructor() {
 
@@ -33,6 +35,7 @@ export default class Admin extends Component<Props, State> {
 
     this.colorChange = this.colorChange.bind(this);
     this.leaveWorld = this.leaveWorld.bind(this);
+    this.typeChange = this.typeChange.bind(this);
   }
 
   componentDidMount() {
@@ -50,6 +53,11 @@ export default class Admin extends Component<Props, State> {
     this.props.manager.trigger('colorChange', { color });
   }
 
+  typeChange(e: Event) {
+    const type = parseInt(this.refs.typeSelect.value, 10);
+    this.props.manager.trigger('typeChange', { type });
+  }
+
   render() {
 
     const colorpicker = (
@@ -65,12 +73,20 @@ export default class Admin extends Component<Props, State> {
       </div>
     );
 
+    const typeSelect = (
+      <select onChange={this.typeChange} ref="typeSelect">
+        <option selected value={MeshData.VOXEL}>Voxel</option>
+        <option value={MeshData.SPHERE}>Sphere</option>
+      </select>
+    )
+
     const exists = this.state.world !== null;
 
     return (
       <div className="admin">
         <Link to="/" className="admin__button" onClick={this.leaveWorld}>Main</Link>
         {exists ? colorpicker : null}
+        {exists ? typeSelect : null}
       </div>
     );
   }
