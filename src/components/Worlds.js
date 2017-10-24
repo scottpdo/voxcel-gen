@@ -11,12 +11,13 @@ import nouns from '../data/nouns';
 import '../css/Worlds.css';
 
 type Props = {
-  db: firebase.database
+  db: firebase.database,
+  storage: firebase.storage
 };
 
 type Pair = {
   name: string,
-  screenshot: string
+  screenshot: ?string
 };
 
 type State = {
@@ -40,14 +41,25 @@ export default class Worlds extends Component<Props, State> {
   }
 
   showWorlds(snapshot: firebase.snapshot) {
+
     const worlds = [];
+
     snapshot.forEach(child => {
       worlds.push({
         name: child.key,
-        screenshot: child.val()
+        screenshot: null
       });
     });
-    this.setState({ worlds });
+
+    worlds.forEach(world => {
+
+      const promise = this.props.storage.ref(world.name).getDownloadURL();
+      
+      promise.then(url => {
+        world.screenshot = url;
+        this.setState({ worlds });
+      });
+    });
   }
 
   componentDidMount() {
@@ -73,12 +85,17 @@ export default class Worlds extends Component<Props, State> {
   render() {
 
     const worlds = this.state.worlds.map((world, i) => {
-      const style = { backgroundImage: "url(" + world.screenshot + ")" };
+      
+      const style = {};
+      if ( world.screenshot !== null ) {
+        style.backgroundImage = "url(" + world.screenshot + ")";
+      }
+
       return (
       <li className="worlds__world" key={"world-" + i}>
         <Link to={"/world/" + world.name}>
           <div className="worlds__img" style={style}></div>
-          {world.name}
+          <span>{world.name}</span>
         </Link>
       </li>
       );

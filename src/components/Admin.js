@@ -16,11 +16,13 @@ type Props = {
 };
 
 type State = {
+  color: number,
   world: ?World
 };
 
 export default class Admin extends Component<Props, State> {
 
+  chooseColor: Function;
   colorChange: Function;
   leaveWorld: Function;
   typeChange: Function;
@@ -30,17 +32,24 @@ export default class Admin extends Component<Props, State> {
     super();
 
     this.state = {
+      color: 0x666666,
       world: null
     };
 
+    this.chooseColor = this.chooseColor.bind(this);
     this.colorChange = this.colorChange.bind(this);
     this.leaveWorld = this.leaveWorld.bind(this);
     this.typeChange = this.typeChange.bind(this);
   }
 
   componentDidMount() {
+
     this.props.manager.on('worldChange', world => {
       this.setState({ world });
+    });
+
+    this.props.manager.on('colorChosen', c => {
+      this.refs.colorpicker.value = '#' + c.color.toString(16);
     });
   }
 
@@ -58,6 +67,10 @@ export default class Admin extends Component<Props, State> {
     this.props.manager.trigger('typeChange', { type });
   }
 
+  chooseColor(e: Event) {
+    this.props.manager.trigger('chooseColor');
+  }
+
   render() {
 
     const colorpicker = (
@@ -68,27 +81,41 @@ export default class Admin extends Component<Props, State> {
           id="admin__colorpicker"
           type="color" 
           ref="colorpicker" 
-          defaultValue="#666666"
-          onInput={this.colorChange} />
+          defaultValue={'#' + this.state.color.toString(16)}
+          onChange={this.colorChange} />
       </div>
+    );
+
+    const eyeDropper = (
+      <button 
+        className="admin__button admin__button--small" 
+        onClick={this.chooseColor}>Choose Color</button>
     );
 
     const typeSelect = (
       <div>
         <label htmlFor="admin__select" className="admin__label">Type</label>
-        <select onChange={this.typeChange} ref="typeSelect" class="admin__select" id="admin_select">
-          <option selected value={MeshData.VOXEL}>Voxel</option>
+        <select 
+          defaultValue={MeshData.VOXEL}
+          onChange={this.typeChange} 
+          ref="typeSelect" 
+          className="admin__select" 
+          id="admin_select">
+          
+          <option value={MeshData.VOXEL}>Voxel</option>
           <option value={MeshData.SPHERE}>Sphere</option>
         </select>
       </div>
-    )
+    );
 
     const exists = this.state.world !== null;
 
     return (
       <div className="admin">
         <Link to="/" className="admin__button" onClick={this.leaveWorld}>Main</Link>
+        {exists ? <hr /> : null}
         {exists ? colorpicker : null}
+        {exists ? eyeDropper : null}
         {exists ? typeSelect : null}
       </div>
     );

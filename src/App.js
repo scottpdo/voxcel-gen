@@ -9,8 +9,9 @@ import Main from './components/Main';
 import Manager from './components/Manager';
 import './css/App.css';
 
-const app = firebase.initializeApp(CONFIG.firebase);
+const app = firebase.initializeApp(CONFIG.isDev ? CONFIG.firebaseDev : CONFIG.firebase);
 const db = app.database();
+const storage = firebase.storage(app);
 
 const mgr = new Manager();
 
@@ -23,7 +24,7 @@ class App extends Component<Props, State> {
     return (
       <div className="app__container">
         <Admin db={db} manager={mgr} />
-        <Main db={db} manager={mgr} />
+        <Main db={db} manager={mgr} storage={storage} />
       </div>
     );
   }

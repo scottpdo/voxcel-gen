@@ -11,7 +11,8 @@ import '../css/Main.css';
 
 type Props = {
 	db: firebase.database,
-	manager: Manager
+	manager: Manager,
+	storage: firebase.storage
 };
 
 type State = {};
@@ -32,8 +33,8 @@ export default class Main extends Component<Props, State> {
 		
 		return (
 			<div className="main">
-				<Route exact path="/" render={() => <Worlds db={this.props.db} />} />
-				<Route path="/world/:world" render={(props) => <World db={this.props.db} manager={this.props.manager} {...props} />} />
+				<Route exact path="/" render={() => <Worlds db={this.props.db} storage={this.props.storage} />} />
+				<Route path="/world/:world" render={(props) => <World db={this.props.db} manager={this.props.manager} storage={this.props.storage} {...props} />} />
 			</div>
 		);
 	}

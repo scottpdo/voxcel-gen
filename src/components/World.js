@@ -17,6 +17,7 @@ const THREE = require('three');
 type Props = {
   db: firebase.database,
   manager: Manager,
+  storage: firebase.storage,
   match: {
     params: {
       world: string
@@ -25,10 +26,11 @@ type Props = {
 };
 
 type State = {
+  action: ?string,
   color: number,
   exists: number,
   type: number
-}
+};
 
 export default class World extends Component<Props, State> {
 
@@ -57,6 +59,7 @@ export default class World extends Component<Props, State> {
     super();
   
     this.state = {
+      action: null,
       color: 0x666666,
       exists: 0, // indeterminate... -1 = does not exist, 1 = exists
       type: MeshData.VOXEL,
@@ -80,12 +83,17 @@ export default class World extends Component<Props, State> {
 
     // add colorChange listener
     this.props.manager.on('colorChange', c => {
-      this.setState({ color: c.color })
+      this.setState({ color: c.color });
+    });
+
+    // add chooseColor listener
+    this.props.manager.on('chooseColor', c => {
+      this.setState({ action: 'chooseColor' });
     });
 
     // add typeChange listener
     this.props.manager.on('typeChange', c => {
-      this.setState({ type: c.type })
+      this.setState({ type: c.type });
     });
 
     this.world = this.props.match.params.world;
@@ -99,7 +107,7 @@ export default class World extends Component<Props, State> {
 
     setTimeout(this.screenshot, 5000);
 
-    this.screenshotInterval = setInterval(this.screenshot, 60 * 1000);
+    this.screenshotInterval = setInterval(this.screenshot, 30 * 1000);
 
     window.addEventListener('resize', this.onResize);
   }
@@ -113,6 +121,9 @@ export default class World extends Component<Props, State> {
     
     // remove colorChange listener
     this.props.manager.off('colorChange');
+
+    // remove chooseColor listener
+    this.props.manager.off('chooseColor');
 
     // remove typeChange listener
     this.props.manager.off('typeChange');
@@ -223,6 +234,8 @@ export default class World extends Component<Props, State> {
     // $FlowFixMe
     this.mouse.y = -( (e.clientY - rect.y ) / this.canvas.height ) * 2 + 1;
 
+    if ( this.state.action === 'chooseColor' ) return;
+
     let dist = Infinity;
     let closestObj = null;
 
@@ -269,8 +282,9 @@ export default class World extends Component<Props, State> {
     
     if ( this.mouseDownCoords.x !== this.mouse.x || this.mouseDownCoords.y !== this.mouse.y ) return;
 
-    // delete voxel
-    if (e.shiftKey) {
+    // deleting or choosing color -- find closest
+    if ( e.shiftKey || this.state.action === 'chooseColor' ) {
+
       // find closest
       // calculate objects intersecting the picking ray
       let dist = Infinity;
@@ -288,7 +302,25 @@ export default class World extends Component<Props, State> {
         }
       });
 
-      if ( closestObj === null ) return;
+      if ( closestObj === null ) {
+        // no object selected, just revert to normal
+        if (this.state.action === 'chooseColor') this.setState({ action: null });
+        return;
+      }
+
+      if ( this.state.action === 'chooseColor' ) {
+
+        const color = closestObj.object.material.color.getHex();
+
+        this.setState({ 
+          action: null,
+          color 
+        });
+
+        this.props.manager.trigger('colorChosen', { color });
+
+        return;
+      }
 
       const data = Voxelizer.meshToData(closestObj.object);
       
@@ -310,7 +342,6 @@ export default class World extends Component<Props, State> {
     let mesh;
     if (this.state.type === MeshData.SPHERE) {
       mesh = Voxelizer.sphere(this.state.color);
-      console.log(Voxelizer.meshToData(mesh));
     } else {
       mesh = Voxelizer.voxel(this.state.color);
     }
@@ -324,6 +355,8 @@ export default class World extends Component<Props, State> {
   }
 
   screenshot() {
+
+    const storage = this.props.storage.ref(this.world);
 
     if (this.state.exists < 1) return;
 
@@ -346,22 +379,9 @@ export default class World extends Component<Props, State> {
 
     canvas.getContext('2d').drawImage(this.canvas, 0, 0, canvas.width, canvas.height);
 
-    const data = canvas.toDataURL().split(',')[1];
+    const data = canvas.toDataURL();
 
-    request.open('POST', CONFIG.imgurEndpoint, true);
-    request.setRequestHeader('Authorization', 'Client-ID ' + CONFIG.imgurId);
-    request.setRequestHeader('Accept', 'application/json');
-    request.send(data);
-
-    request.onreadystatechange = () => {
-
-      if (request.status !== 200) return console.log(request.responseText);
-      if (request.responseText.length === 0) return;
-
-      const res = JSON.parse(request.responseText);
-      const url = res.data.link;
-      this.props.db.ref('worldIndex').child(this.world).set(url);
-    };
+    storage.putString(data, 'data_url');
 
     // restore everything
     this.rolloverMesh.visible = prevRolloverState;
@@ -384,6 +404,7 @@ export default class World extends Component<Props, State> {
       return <div style={textStyle}>404 - Couldn't find world.</div>;
     
     const style = {
+      cursor: this.state.action === 'chooseColor' ? 'copy' : 'default',
       height: '100%',
       width: '100%'
     };

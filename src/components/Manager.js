@@ -5,12 +5,22 @@ type Pair = {
   cb: Function
 };
 
+type Data = {
+  color: number
+};
+
 export default class Manager {
 
   events: Array<Pair>;
+  data: Data;
 
   constructor() {
+
     this.events = [];
+
+    this.data = {
+      color: 0x666666
+    };
   }
 
   on(evt: string, cb: Function) {
@@ -25,5 +35,22 @@ export default class Manager {
 
   trigger(evt: string, params: Object = {}) {
     this.events.filter(obj => obj.evt === evt).forEach(obj => obj.cb(params));
+  }
+
+  set(key: string, value: any) {
+    if (this.data.hasOwnProperty(key)) {
+      console.log('setting', key, 'to', value);
+      this.data[key] = value;
+    } else {
+      throw new Error("Can't set property of manager -- key doesn't exist");
+    }
+  }
+
+  get(key: string) {
+    if (this.data.hasOwnProperty(key)) {
+      return this.data[key];
+    } else {
+      throw new Error("Can't get property of manager -- key doesn't exist");
+    }
   }
 };
