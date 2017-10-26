@@ -14,6 +14,7 @@ export default function stage(world: World) {
 
 	let groundPlane = new THREE.Mesh(geo, mat);
 	groundPlane.rotation.x -= Math.PI / 2;
+	groundPlane.name = 'groundPlane';
 
 	world.scene.add(groundPlane);
 	world.objects.add(groundPlane);

@@ -25,6 +25,7 @@ export default class Manager {
 
   on(evt: string, cb: Function) {
     this.events.push({ evt, cb });
+    return this; // allow chaining for conciseness
   }
 
   off(evt: string) {
@@ -39,7 +40,6 @@ export default class Manager {
 
   set(key: string, value: any) {
     if (this.data.hasOwnProperty(key)) {
-      console.log('setting', key, 'to', value);
       this.data[key] = value;
     } else {
       throw new Error("Can't set property of manager -- key doesn't exist");
