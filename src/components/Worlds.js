@@ -53,10 +53,12 @@ export default class Worlds extends Component<Props, State> {
 
     worlds.forEach(world => {
 
-      const promise = this.props.storage.ref(world.name).getDownloadURL();
-      
-      promise.then(url => {
+      const ref = this.props.storage.ref('images/' + world.name);
+
+      ref.getDownloadURL().then(url => {
         world.screenshot = url;
+        this.setState({ worlds });
+      }).catch(err => {
         this.setState({ worlds });
       });
     });
@@ -88,7 +90,8 @@ export default class Worlds extends Component<Props, State> {
       
       const style = {};
       if ( world.screenshot !== null ) {
-        style.backgroundImage = "url(" + world.screenshot + ")";
+        const img = world.screenshot || "";
+        style.backgroundImage = "url(" + img + ")";
       }
 
       return (

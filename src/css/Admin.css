@@ -43,5 +43,6 @@
 
 .admin__select {
   display: block;
+  margin-bottom: 8px;
   width: 100%;
 }

@@ -26,6 +26,7 @@ export default class Admin extends Component<Props, State> {
   colorChange: Function;
   leaveWorld: Function;
   typeChange: Function;
+  viewHistory: Function;
 
   constructor() {
 
@@ -40,6 +41,7 @@ export default class Admin extends Component<Props, State> {
     this.colorChange = this.colorChange.bind(this);
     this.leaveWorld = this.leaveWorld.bind(this);
     this.typeChange = this.typeChange.bind(this);
+    this.viewHistory = this.viewHistory.bind(this);
   }
 
   componentDidMount() {
@@ -71,6 +73,10 @@ export default class Admin extends Component<Props, State> {
     this.props.manager.trigger('chooseColor');
   }
 
+  viewHistory(e: Event) {
+    this.props.manager.trigger('viewHistory');
+  }
+
   render() {
 
     const colorpicker = (
@@ -90,6 +96,10 @@ export default class Admin extends Component<Props, State> {
       <button 
         className="admin__button admin__button--small" 
         onClick={this.chooseColor}>Choose Color</button>
+    );
+
+    const viewHistory = (
+      <button className="admin__button admin__button--small" onClick={this.viewHistory}>View History</button>
     );
 
     const typeSelect = (
@@ -117,6 +127,7 @@ export default class Admin extends Component<Props, State> {
         {exists ? colorpicker : null}
         {exists ? eyeDropper : null}
         {exists ? typeSelect : null}
+        {exists ? viewHistory : null}
       </div>
     );
   }

@@ -4,7 +4,7 @@ import React, { Component, SyntheticEvent } from 'react';
 import * as firebase from 'firebase';
 import _ from 'lodash';
 
-import CONFIG from '../config';
+// import CONFIG from '../config';
 import Manager from './Manager';
 import stage from './scene/stage';
 import _Camera from './scene/Camera';
@@ -29,7 +29,8 @@ type State = {
   action: ?string,
   color: number,
   exists: number,
-  type: number
+  type: number,
+  viewingHistory: boolean
 };
 
 export default class World extends Component<Props, State> {
@@ -52,6 +53,7 @@ export default class World extends Component<Props, State> {
   scene: THREE.Scene;
   screenshot: Function;
   screenshotInterval: number
+  viewHistory: Function;
   world: string;
 
   constructor() {
@@ -63,6 +65,7 @@ export default class World extends Component<Props, State> {
       color: 0x666666,
       exists: 0, // indeterminate... -1 = does not exist, 1 = exists
       type: MeshData.VOXEL,
+      viewingHistory: false
     };
 
     this.objects = new Objects();
@@ -74,6 +77,7 @@ export default class World extends Component<Props, State> {
     this.onMouseUp = this.onMouseUp.bind(this);
     this.onResize = this.onResize.bind(this);
     this.screenshot = this.screenshot.bind(this);
+    this.viewHistory = this.viewHistory.bind(this);
   }
 
   componentDidMount() {
@@ -81,20 +85,16 @@ export default class World extends Component<Props, State> {
     // trigger worldChange for admin
     this.props.manager.trigger('worldChange', this);
 
-    // add colorChange listener
+    // add managerial listeners
     this.props.manager.on('colorChange', c => {
       this.setState({ color: c.color });
-    });
-
-    // add chooseColor listener
-    this.props.manager.on('chooseColor', c => {
+    }).on('chooseColor', c => {
       this.setState({ action: 'chooseColor' });
-    });
-
-    // add typeChange listener
-    this.props.manager.on('typeChange', c => {
+    }).on('typeChange', c => {
       this.setState({ type: c.type });
-    });
+    }).on('chooseColor', () => {
+      this.setState({ action: 'chooseColor' });
+    }).on('viewHistory', this.viewHistory);
 
     this.world = this.props.match.params.world;
 
@@ -227,6 +227,8 @@ export default class World extends Component<Props, State> {
 
   onMouseMove(e: SyntheticEvent) {
 
+    if (this.state.viewingHistory) return;
+
     const rect = this.canvas.getBoundingClientRect();
 
     // $FlowFixMe
@@ -281,6 +283,8 @@ export default class World extends Component<Props, State> {
   onMouseUp(e: MouseEvent) {
     
     if ( this.mouseDownCoords.x !== this.mouse.x || this.mouseDownCoords.y !== this.mouse.y ) return;
+    
+    if (this.state.viewingHistory) return;
 
     // deleting or choosing color -- find closest
     if ( e.shiftKey || this.state.action === 'chooseColor' ) {
@@ -356,11 +360,9 @@ export default class World extends Component<Props, State> {
 
   screenshot() {
 
-    const storage = this.props.storage.ref(this.world);
+    const storage = this.props.storage.ref('images/' + this.world);
 
     if (this.state.exists < 1) return;
-
-    const request = new XMLHttpRequest();
 
     const canvas = document.createElement('canvas');
     canvas.width = 600;
@@ -387,6 +389,50 @@ export default class World extends Component<Props, State> {
     this.rolloverMesh.visible = prevRolloverState;
     this.camera.copy(prevCamera);
     this.draw();
+  }
+
+  viewHistory() {
+
+    this.rolloverMesh.visible = false;
+
+    this.setState({ viewingHistory: true }, () => {
+
+      // remove all scene objects except groundPlane
+      this.objects.all()
+        .filter(obj => obj.name !== 'groundPlane')
+        .forEach(obj => { this.scene.remove(obj) });
+
+      this.dataRef.once('value', snapshot => {
+        
+        const n = snapshot.numChildren();
+        if (n === 0) return this.setState({ viewingHistory: false });
+
+        let i = 0;
+        let timeout = ():number => i * 250;
+        
+        snapshot.forEach(child => {
+          
+          i++;
+          
+          setTimeout(() => {
+
+            const meshData = MeshData.fromObject(child.val());
+            const mesh = Voxelizer.dataToMesh(meshData);
+            
+            this.scene.add(mesh);
+            this.objects.add(mesh);
+
+          }, timeout());
+        });
+
+        setTimeout(() => {
+          this.setState({ viewingHistory: false });
+        }, timeout());
+      });
+
+      this.draw();
+
+    });
   }
 
   render() {
