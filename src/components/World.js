@@ -356,7 +356,7 @@ export default class World extends Component<Props, State> {
 
   screenshot() {
 
-    const storage = this.props.storage.ref(this.world);
+    const storage = this.props.storage.ref('images/' + this.world);
 
     if (this.state.exists < 1) return;
 
