@@ -2,37 +2,73 @@
 
 import MeshData from './MeshData';
 
-const THREE = require('three');
-
 const UNIT = 50;
 
-const Voxelizer = {
+const THREE = require('three');
 
-  UNIT,
+export default class Voxelizer {
+
+  materials: Object;
+  UNIT: number;
+
+  static VOX_GEO = new THREE.BoxGeometry(UNIT, UNIT, UNIT);
+
+  static SPHERE_GEO = new THREE.SphereGeometry(UNIT * 0.75, 12, 12);
+
+  constructor() {
+
+    this.UNIT = UNIT;
+    
+    this.materials = {
+      // 6710886 = 0x666666 in dec
+      '6710886': new THREE.MeshLambertMaterial({
+        color: 0x666666
+      })
+    };
+  }
+
+  getMaterial(color: number, opacity:number = 1): THREE.Material {
+
+    let mat: THREE.Material;
+
+    // if material not in library, add a new one
+    if (!this.materials.hasOwnProperty(color.toString()) && opacity === 1) {
+      
+      mat = this.materials[color.toString()] = new THREE.MeshLambertMaterial({ color });
+
+    // not storing transparent materials for now...
+    } else if ( opacity < 1 ) {
+      
+      mat = new THREE.MeshBasicMaterial({
+        color,
+        opacity,
+        transparent: true
+      });
+
+    // if it is in the library, reference it
+    } else {
+      
+      mat = this.materials[color.toString()];
+    }
+
+    return mat;
+  }
 
   voxel(color: number, opacity:number = 1) {
 
-    const geo = new THREE.BoxGeometry(UNIT, UNIT, UNIT);
-    const mat = opacity < 1 ? new THREE.MeshBasicMaterial({
-      color,
-      opacity,
-      transparent: true
-    }) : new THREE.MeshLambertMaterial({ color });
+    const geo = Voxelizer.VOX_GEO;
+    const mat = this.getMaterial(color, opacity);
 
     return new THREE.Mesh(geo, mat);
-  },
+  }
 
   sphere(color: number, opacity:number = 1) {
     
-    const geo = new THREE.SphereGeometry(UNIT * 0.75, 12, 12);
-    const mat = opacity < 1 ? new THREE.MeshBasicMaterial({
-      color,
-      opacity,
-      transparent: true
-    }) : new THREE.MeshLambertMaterial({ color });
+    const geo = Voxelizer.SPHERE_GEO;
+    const mat = this.getMaterial(color, opacity);
 
     return new THREE.Mesh(geo, mat);
-  },
+  }
 
   dataToMesh(data: MeshData): THREE.Mesh {
     
@@ -57,7 +93,7 @@ const Voxelizer = {
     mesh.position.set(x, y, z);
     
     return mesh;
-  },
+  }
 
   meshToData(mesh: THREE.Mesh): MeshData {
 
@@ -77,5 +113,3 @@ const Voxelizer = {
     return result;
   }
 };
-
-export default Voxelizer;

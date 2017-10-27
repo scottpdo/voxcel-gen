@@ -8,11 +8,13 @@ import _ from 'lodash';
 import Manager from './Manager';
 import stage from './scene/stage';
 import _Camera from './scene/Camera';
-import Voxelizer from './scene/Voxelizer';
+import VoxelizerCtr from './scene/Voxelizer';
 import MeshData from './scene/MeshData';
 import Objects from './scene/Objects';
 
 const THREE = require('three');
+
+const Voxelizer = new VoxelizerCtr();
 
 type Props = {
   db: firebase.database,
@@ -168,6 +170,8 @@ export default class World extends Component<Props, State> {
   
       this.scene.add(mesh);
       this.objects.add(mesh);
+
+      this.draw();
     };
 
     const unRenderVoxel = (child) => {
@@ -189,6 +193,8 @@ export default class World extends Component<Props, State> {
         this.scene.remove(match);
         this.objects.remove(match);
       }
+
+      this.draw();
     };
 
     // on subsequent new voxels
@@ -205,8 +211,6 @@ export default class World extends Component<Props, State> {
     
     this.renderer.render(this.scene, this.camera);
     this.raycaster.setFromCamera( this.mouse, this.camera );
-
-    if (this.state.exists > 0) window.requestAnimationFrame(this.draw);
   }
 
   onResize() {
@@ -222,12 +226,14 @@ export default class World extends Component<Props, State> {
 
     this.camera.aspect = WIDTH / HEIGHT;
 		this.camera.updateProjectionMatrix();
-		this.renderer.setSize( WIDTH, HEIGHT );
+    this.renderer.setSize( WIDTH, HEIGHT );
+    
+    this.draw();
   }
 
   onMouseMove(e: SyntheticEvent) {
 
-    if (this.state.viewingHistory) return;
+    if (this.state.viewingHistory) return this.draw();
 
     const rect = this.canvas.getBoundingClientRect();
 
@@ -254,9 +260,9 @@ export default class World extends Component<Props, State> {
       }
     });
 
-    if ( closestObj === null ) return;
+    // if ( closestObj === null ) return;
 
-    if ( !e.shiftKey ) {
+    if ( closestObj !== null && !e.shiftKey ) {
 
       this.rolloverMesh.visible = true;
       this.rolloverMesh.position.copy( closestObj.point ).add( closestObj.face.normal );
@@ -273,6 +279,8 @@ export default class World extends Component<Props, State> {
     } else {
       this.rolloverMesh.visible = false;
     }
+
+    this.draw();
   }
 
   onMouseDown(e: MouseEvent) {
@@ -421,6 +429,8 @@ export default class World extends Component<Props, State> {
             
             this.scene.add(mesh);
             this.objects.add(mesh);
+
+            this.draw();
 
           }, timeout());
         });
