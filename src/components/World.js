@@ -133,6 +133,8 @@ export default class World extends Component<Props, State> {
     this.setState({ exists: 0 });
 
     window.removeEventListener('resize', this.onResize);
+    
+    this.refs.canvas.removeEventListener('wheel', this.draw);
   }
 
   init() {
@@ -195,6 +197,7 @@ export default class World extends Component<Props, State> {
       }
 
       this.draw();
+      
     };
 
     // on subsequent new voxels
@@ -202,6 +205,9 @@ export default class World extends Component<Props, State> {
 
     // on deleted voxels
     this.dataRef.on('child_removed', unRenderVoxel);
+
+    // not sure why, but can't add this to <canvas> in render()
+    this.refs.canvas.addEventListener('wheel', this.draw);
 
 		this.draw();
     
