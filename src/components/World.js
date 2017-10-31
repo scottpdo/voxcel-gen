@@ -30,6 +30,7 @@ type Props = {
 type State = {
   action: ?string,
   color: number,
+  displayName: string,
   exists: number,
   type: number,
   viewingByPlayer: boolean,
@@ -70,6 +71,7 @@ export default class World extends Component<Props, State> {
     this.state = {
       action: null,
       color: 0x666666,
+      displayName: "",
       exists: 0, // indeterminate... -1 = does not exist, 1 = exists
       type: MeshData.VOXEL,
       viewingByPlayer: false,
@@ -117,7 +119,10 @@ export default class World extends Component<Props, State> {
       // if no value, then it doesn't exist, serve 404
       if (_.isNil(snapshot.val())) return this.setState({ exists: -1 });
       // if it exists, we're good to go and initialize
-      this.setState({ exists: 1 }, this.init);
+      this.setState({ 
+        displayName: snapshot.val(),
+        exists: 1 
+      }, this.init);
     });
 
     setTimeout(this.screenshot, 5000);
@@ -534,6 +539,7 @@ export default class World extends Component<Props, State> {
     this.setState({
       viewingByPlayer: !this.state.viewingByPlayer
     }, () => {
+      if (this.state.viewingByPlayer) this.rolloverMesh.visible = false;
       this.update();
       this.draw();
     });
@@ -605,6 +611,16 @@ export default class World extends Component<Props, State> {
       height: '100%',
       width: '100%'
     };
+
+    const nameStyle = {
+      color: '#fff',
+      position: 'absolute',
+      fontWeight: 'normal',
+      top: 20,
+      left: 20,
+      margin: 0,
+      userSelect: 'none'
+    };
     
     return (
       <div style={style} ref="container">
@@ -612,6 +628,7 @@ export default class World extends Component<Props, State> {
           onMouseDown={this.onMouseDown} 
           onMouseMove={this.onMouseMove}
           onMouseUp={this.onMouseUp} />
+        <h1 style={nameStyle}>{this.state.displayName}</h1>
       </div>
     );
   }

@@ -7,6 +7,7 @@ import { Route } from 'react-router-dom';
 import Worlds from './Worlds';
 import World from './World';
 import Manager from './Manager';
+import Instructions from './Instructions';
 import '../css/Main.css';
 
 type Props = {
@@ -34,6 +35,7 @@ export default class Main extends Component<Props, State> {
 		return (
 			<div className="main">
 				<Route exact path="/" render={() => <Worlds db={this.props.db} storage={this.props.storage} />} />
+				<Route path="/instructions" component={Instructions} />
 				<Route path="/world/:world" render={(props) => <World db={this.props.db} manager={this.props.manager} storage={this.props.storage} {...props} />} />
 			</div>
 		);
