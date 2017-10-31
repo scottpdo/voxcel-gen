@@ -6,9 +6,6 @@ import * as firebase from 'firebase';
 import _ from 'lodash';
 import slugify from 'slugify';
 
-import adjs from '../data/adjs';
-import nouns from '../data/nouns';
-
 import '../css/Worlds.css';
 
 type Props = {
