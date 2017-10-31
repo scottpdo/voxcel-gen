@@ -26,6 +26,7 @@ export default class Admin extends Component<Props, State> {
   colorChange: Function;
   leaveWorld: Function;
   typeChange: Function;
+  viewByPlayer: Function;
   viewHistory: Function;
 
   constructor() {
@@ -41,6 +42,7 @@ export default class Admin extends Component<Props, State> {
     this.colorChange = this.colorChange.bind(this);
     this.leaveWorld = this.leaveWorld.bind(this);
     this.typeChange = this.typeChange.bind(this);
+    this.viewByPlayer = this.viewByPlayer.bind(this);
     this.viewHistory = this.viewHistory.bind(this);
   }
 
@@ -73,6 +75,10 @@ export default class Admin extends Component<Props, State> {
     this.props.manager.trigger('chooseColor');
   }
 
+  viewByPlayer(e: Event) {
+    this.props.manager.trigger('viewByPlayer');
+  }
+
   viewHistory(e: Event) {
     this.props.manager.trigger('viewHistory');
   }
@@ -102,6 +108,15 @@ export default class Admin extends Component<Props, State> {
       <button className="admin__button admin__button--small" onClick={this.viewHistory}>View History</button>
     );
 
+    const viewByPlayer = (
+      <div>
+        <label className="admin__label">
+          View By Player
+          <input type="checkbox" class="admin__checkbox" onChange={this.viewByPlayer} />
+        </label>
+      </div>
+    );
+
     const typeSelect = (
       <div>
         <label htmlFor="admin__select" className="admin__label">Type</label>
@@ -114,6 +129,7 @@ export default class Admin extends Component<Props, State> {
           
           <option value={MeshData.VOXEL}>Voxel</option>
           <option value={MeshData.SPHERE}>Sphere</option>
+          <option value={MeshData.BEAM}>Beam</option>
         </select>
       </div>
     );
@@ -128,6 +144,7 @@ export default class Admin extends Component<Props, State> {
         {exists ? eyeDropper : null}
         {exists ? typeSelect : null}
         {exists ? viewHistory : null}
+        {exists ? viewByPlayer : null}
       </div>
     );
   }
