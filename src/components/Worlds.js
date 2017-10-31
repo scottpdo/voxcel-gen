@@ -4,6 +4,7 @@ import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import * as firebase from 'firebase';
 import _ from 'lodash';
+import slugify from 'slugify';
 
 import adjs from '../data/adjs';
 import nouns from '../data/nouns';
@@ -73,15 +74,32 @@ export default class Worlds extends Component<Props, State> {
     this.dataRef.off();
   }
 
-  addWorld() {
+  addWorld(message: string) {
 
-    const adj1 = _.sample(adjs).toLowerCase();
-    const adj2 = _.sample(adjs).toLowerCase();
-    const noun = _.sample(nouns).toLowerCase();
-    
-    const text = adj1 + "-" + adj2 + "-" + noun;
+    const name = prompt(message);
 
-    this.dataRef.child(text).set(1);
+    if (name === "" || _.isNil(name)) return;
+
+    const slug = slugify(name, {
+      replacement: '-',    // replace spaces with replacement 
+      remove: /[$*_+~.()'"!\-:@]/g,        // regex to remove characters 
+      lower: true          // result in lower case 
+    });
+
+    if (slug === "") return;
+
+    this.dataRef.child(slug).once('value', snapshot => {
+      
+      const val = snapshot.val();
+
+      // if name not taken, add it to the worlds
+      if (_.isNil(val)) {
+        this.dataRef.child(slug).set(name);
+      // otherwise, ask for a new name
+      } else {
+        this.addWorld("There is already a world with that name. Try another!");
+      }
+    });
   }
 
   render() {
@@ -103,12 +121,17 @@ export default class Worlds extends Component<Props, State> {
       </li>
       );
     });
-
-    worlds.push(<li key="addworld" className="worlds__world worlds__world--add" onClick={this.addWorld.bind(this)}><span>ADD NEW +</span></li>);
+    
+    const addNewStyle = {
+      color: '#666',
+      cursor: 'pointer',
+      textDecoration: 'underline'
+    };
 
     return (
       <div className="worlds">
-        <h2>Worlds:</h2>
+        <h2>
+          Worlds: (<span onClick={this.addWorld.bind(this, "What is your world's name?")} style={addNewStyle}>Add New</span>)</h2>
         <ul className="worlds__ul">{worlds}</ul>
       </div>
     );

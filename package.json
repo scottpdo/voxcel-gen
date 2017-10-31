@@ -8,6 +8,7 @@
     "react": "^16.0.0",
     "react-dom": "^16.0.0",
     "react-router-dom": "^4.2.2",
+    "slugify": "^1.2.1",
     "store": "^2.0.12",
     "sweetalert": "^2.0.8",
     "three": "^0.87.1",
