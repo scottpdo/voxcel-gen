@@ -19,7 +19,8 @@ export default class Manager {
     this.events = [];
 
     this.data = {
-      color: 0x666666
+      color: 0x666666,
+      user: null
     };
   }
 
@@ -32,6 +33,7 @@ export default class Manager {
     const matches = e => e.evt === evt;
     const idx = this.events.findIndex(matches);
     if (idx >= 0) this.events.splice(idx, 1);
+    return this; // chaining
   }
 
   trigger(evt: string, params: Object = {}) {

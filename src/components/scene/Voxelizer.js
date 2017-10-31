@@ -10,10 +10,13 @@ export default class Voxelizer {
 
   materials: Object;
   UNIT: number;
+  user: string;
 
   static VOX_GEO = new THREE.BoxGeometry(UNIT, UNIT, UNIT);
 
   static SPHERE_GEO = new THREE.SphereGeometry(UNIT * 0.75, 12, 12);
+
+  static BEAM_GEO = new THREE.BoxGeometry(UNIT / 8, 5 * UNIT / 4, UNIT / 8);
 
   constructor() {
 
@@ -25,6 +28,10 @@ export default class Voxelizer {
         color: 0x666666
       })
     };
+  }
+
+  setUser(user: string) {
+    this.user = user;
   }
 
   getMaterial(color: number, opacity:number = 1): THREE.Material {
@@ -58,16 +65,36 @@ export default class Voxelizer {
 
     const geo = Voxelizer.VOX_GEO;
     const mat = this.getMaterial(color, opacity);
+    const mesh = new THREE.Mesh(geo, mat);
 
-    return new THREE.Mesh(geo, mat);
+    mesh.userData.type = MeshData.VOXEL;
+    mesh.userData.defaultMaterial = mat;
+
+    return mesh;
   }
 
   sphere(color: number, opacity:number = 1) {
     
     const geo = Voxelizer.SPHERE_GEO;
     const mat = this.getMaterial(color, opacity);
+    const mesh = new THREE.Mesh(geo, mat);
 
-    return new THREE.Mesh(geo, mat);
+    mesh.userData.type = MeshData.SPHERE;
+    mesh.userData.defaultMaterial = mat;
+
+    return mesh;
+  }
+
+  beam(color: number, opacity:number = 1) {
+
+    const geo = Voxelizer.BEAM_GEO;
+    const mat = this.getMaterial(color, opacity);
+    const mesh = new THREE.Mesh(geo, mat);
+
+    mesh.userData.type = MeshData.BEAM;
+    mesh.userData.defaultMaterial = mat;
+
+    return mesh;
   }
 
   dataToMesh(data: MeshData): THREE.Mesh {
@@ -82,6 +109,8 @@ export default class Voxelizer {
     if (data.hasOwnProperty('type')) {
       if (data.type === MeshData.SPHERE) {
         mesh = this.sphere(color);
+      } else if (data.type === MeshData.BEAM) {
+        mesh = this.beam(color);
       } else {
         mesh = this.voxel(color);
       }
@@ -91,6 +120,9 @@ export default class Voxelizer {
     }
 
     mesh.position.set(x, y, z);
+
+    // carry through user
+    mesh.userData.user = data.user;
     
     return mesh;
   }
@@ -101,15 +133,37 @@ export default class Voxelizer {
     const x = (p.x - UNIT / 2) / UNIT;
     const y = (p.y - UNIT / 2) / UNIT;
     const z = (p.z - UNIT / 2) / UNIT;
-    const color = mesh.material.color.getHex();
 
     const result = new MeshData(x, y, z);
+
+    const color = mesh.material.color.getHex();
     result.color = color;
 
-    let type = MeshData.VOXEL;
-    if (mesh.geometry instanceof THREE.SphereGeometry) type = MeshData.SPHERE;
+    const type = mesh.userData.type;
     result.type = type;
 
+    const user = mesh.userData.user;
+    result.user = user;
+
     return result;
+  }
+
+  /**
+   * For a given point, get its 6 neighbors (north south east west up down)
+   * @param {*} pt 
+   */
+  neighbors(pt: THREE.Vector3): Array<THREE.Vector3> {
+    
+    const pts = [];
+    
+    // dumb
+    pts.push(pt.clone().set(pt.x + UNIT, pt.y, pt.z));
+    pts.push(pt.clone().set(pt.x - UNIT, pt.y, pt.z));
+    pts.push(pt.clone().set(pt.x, pt.y + UNIT, pt.z));
+    pts.push(pt.clone().set(pt.x, pt.y - UNIT, pt.z));
+    pts.push(pt.clone().set(pt.x, pt.y, pt.z + UNIT));
+    pts.push(pt.clone().set(pt.x, pt.y, pt.z - UNIT));
+
+    return pts;
   }
 };

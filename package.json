@@ -8,13 +8,14 @@
     "react": "^16.0.0",
     "react-dom": "^16.0.0",
     "react-router-dom": "^4.2.2",
+    "store": "^2.0.12",
     "sweetalert": "^2.0.8",
     "three": "^0.87.1",
     "three-orbit-controls": "^82.1.0"
   },
   "devDependencies": {
-    "react-scripts": "1.0.14",
-    "flow-bin": "^0.57.3"
+    "flow-bin": "^0.57.3",
+    "react-scripts": "1.0.14"
   },
   "scripts": {
     "start": "react-scripts start",

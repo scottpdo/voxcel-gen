@@ -32,6 +32,7 @@ type State = {
   color: number,
   exists: number,
   type: number,
+  viewingByPlayer: boolean,
   viewingHistory: boolean
 };
 
@@ -54,7 +55,11 @@ export default class World extends Component<Props, State> {
   rolloverMesh: THREE.Mesh;
   scene: THREE.Scene;
   screenshot: Function;
-  screenshotInterval: number
+  screenshotInterval: number;
+  typeChange: Function;
+  update: Function;
+  userLookup: Object;
+  viewByPlayer: Function;
   viewHistory: Function;
   world: string;
 
@@ -67,10 +72,12 @@ export default class World extends Component<Props, State> {
       color: 0x666666,
       exists: 0, // indeterminate... -1 = does not exist, 1 = exists
       type: MeshData.VOXEL,
+      viewingByPlayer: false,
       viewingHistory: false
     };
 
     this.objects = new Objects();
+    this.userLookup = {};
 
     this.draw = this.draw.bind(this);
     this.init = this.init.bind(this);
@@ -79,10 +86,16 @@ export default class World extends Component<Props, State> {
     this.onMouseUp = this.onMouseUp.bind(this);
     this.onResize = this.onResize.bind(this);
     this.screenshot = this.screenshot.bind(this);
+    this.typeChange = this.typeChange.bind(this);
+    this.update = this.update.bind(this);
+    this.viewByPlayer = this.viewByPlayer.bind(this);
     this.viewHistory = this.viewHistory.bind(this);
   }
 
   componentDidMount() {
+    
+    // set user
+    Voxelizer.setUser(this.props.manager.get('user'));
     
     // trigger worldChange for admin
     this.props.manager.trigger('worldChange', this);
@@ -90,13 +103,13 @@ export default class World extends Component<Props, State> {
     // add managerial listeners
     this.props.manager.on('colorChange', c => {
       this.setState({ color: c.color });
-    }).on('chooseColor', c => {
+    })
+    .on('chooseColor', c => {
       this.setState({ action: 'chooseColor' });
-    }).on('typeChange', c => {
-      this.setState({ type: c.type });
-    }).on('chooseColor', () => {
-      this.setState({ action: 'chooseColor' });
-    }).on('viewHistory', this.viewHistory);
+    })
+    .on('typeChange', this.typeChange)
+    .on('viewByPlayer', this.viewByPlayer)
+    .on('viewHistory', this.viewHistory);
 
     this.world = this.props.match.params.world;
 
@@ -122,17 +135,18 @@ export default class World extends Component<Props, State> {
     this.dataRef.off();
     
     // remove colorChange listener
-    this.props.manager.off('colorChange');
-
-    // remove chooseColor listener
-    this.props.manager.off('chooseColor');
-
-    // remove typeChange listener
-    this.props.manager.off('typeChange');
+    this.props.manager
+      .off('colorChange')
+      .off('chooseColor')
+      .off('typeChange')
+      .off('viewByPlayer')
+      .off('viewHistory');
 
     this.setState({ exists: 0 });
 
     window.removeEventListener('resize', this.onResize);
+    
+    this.refs.canvas.removeEventListener('wheel', this.draw);
   }
 
   init() {
@@ -164,9 +178,37 @@ export default class World extends Component<Props, State> {
     
     this.onResize();
 
+    let colorIndex = 0;
+    // hex strings
+    const colors = [
+      '4DCCBD', // medium turquoise
+      '231651', // russian violet
+      '2374AB', // lapis lazuli
+      'FF8484', // tulip
+      '5BC0EB', // blue jeans
+      'FDE74C', // "gargoyle gas" (!)
+      '9BC53D', // android green
+      'C3423F', // english vermilion
+      '211A1E', // eerie black
+    ];
+
     const renderVoxel = (child) => {
 
       const mesh = Voxelizer.dataToMesh(child.val());
+      
+      const user = child.val().user;
+
+      // always be checking if user is in lookup
+      // and if not, add it with a corresponding material
+      if (!_.isNil(user) && !this.userLookup.hasOwnProperty(user)) {
+        const color = parseInt(colors[colorIndex], 16);
+        this.userLookup[user] = new THREE.MeshLambertMaterial({ color });
+        colorIndex++;
+        if (colorIndex === colors.length) {
+          console.warn("Number of users exceeded number of colors");
+          colorIndex = 0;
+        }
+      }
   
       this.scene.add(mesh);
       this.objects.add(mesh);
@@ -195,6 +237,7 @@ export default class World extends Component<Props, State> {
       }
 
       this.draw();
+      
     };
 
     // on subsequent new voxels
@@ -202,6 +245,9 @@ export default class World extends Component<Props, State> {
 
     // on deleted voxels
     this.dataRef.on('child_removed', unRenderVoxel);
+
+    // not sure why, but can't add this to <canvas> in render()
+    this.refs.canvas.addEventListener('wheel', this.draw);
 
 		this.draw();
     
@@ -211,6 +257,33 @@ export default class World extends Component<Props, State> {
     
     this.renderer.render(this.scene, this.camera);
     this.raycaster.setFromCamera( this.mouse, this.camera );
+  }
+
+  /**
+   * Update all the objects in the scene (for viewing by player, etc.)
+   * DOES NOT CALL .draw()
+   */
+  update() {
+    
+    this.objects.all().forEach(object => {
+
+      if (object.name === 'groundPlane') return;
+
+      const user = object.userData.user;
+
+      // if viewing by user, switch out the material
+      if (this.state.viewingByPlayer) {
+        if (!_.isNil(user)) {
+          object.material = this.userLookup[user];
+        } else {
+          object.visible = false;
+        }
+      // reset
+      } else {
+        object.material = object.userData.defaultMaterial;
+        object.visible = true;
+      }
+    });
   }
 
   onResize() {
@@ -233,7 +306,7 @@ export default class World extends Component<Props, State> {
 
   onMouseMove(e: SyntheticEvent) {
 
-    if (this.state.viewingHistory) return this.draw();
+    if (this.state.viewingHistory || this.state.viewingByPlayer) return this.draw();
 
     const rect = this.canvas.getBoundingClientRect();
 
@@ -242,7 +315,10 @@ export default class World extends Component<Props, State> {
     // $FlowFixMe
     this.mouse.y = -( (e.clientY - rect.y ) / this.canvas.height ) * 2 + 1;
 
-    if ( this.state.action === 'chooseColor' ) return;
+    if ( this.state.action === 'chooseColor' ) {
+      this.rolloverMesh.visible = false;
+      return this.draw();
+    }
 
     let dist = Infinity;
     let closestObj = null;
@@ -260,19 +336,50 @@ export default class World extends Component<Props, State> {
       }
     });
 
-    // if ( closestObj === null ) return;
-
+    // just moving around, show the rolloverMesh
     if ( closestObj !== null && !e.shiftKey ) {
 
       this.rolloverMesh.visible = true;
-      this.rolloverMesh.position.copy( closestObj.point ).add( closestObj.face.normal );
-      this.rolloverMesh.position
-        .divideScalar( Voxelizer.UNIT )
-        .floor()
-        .multiplyScalar( Voxelizer.UNIT )
-        .addScalar( Voxelizer.UNIT / 2 );
-      
-        if ( this.rolloverMesh.position.y < 0 ) {
+
+      // Beams: TODO
+      if (this.state.type === MeshData.BEAM) {
+
+        // this.rolloverMesh.position.set(0, 0, 0);
+
+        const closestPt = closestObj.point.clone().add(closestObj.face.normal);
+        closestPt.divideScalar( Voxelizer.UNIT )
+          .floor()
+          .multiplyScalar( Voxelizer.UNIT )
+          .addScalar( Voxelizer.UNIT / 2 );
+
+        let dist = Infinity;
+        let closestNeighbor;
+        Voxelizer.neighbors(closestPt).forEach(pt => {
+          const tmp = pt.clone().project(this.camera);
+          const proj = new THREE.Vector2(tmp.x, tmp.y);
+          if (proj.distanceTo(this.mouse) < dist) {
+            dist = proj.distanceTo(this.mouse);
+            closestNeighbor = pt;
+          }
+        });
+
+        if (closestNeighbor === null) return;
+        // $FlowFixMe: this shouldn't throw an error, since closestNeighbor must exist here
+        closestNeighbor.sub(closestPt).divideScalar(2).add(closestPt);
+
+        this.rolloverMesh.position.copy(closestNeighbor);
+
+      // Voxels or Spheres
+      } else {
+        this.rolloverMesh.position.copy( closestObj.point ).add( closestObj.face.normal );
+        this.rolloverMesh.position
+          .divideScalar( Voxelizer.UNIT )
+          .floor()
+          .multiplyScalar( Voxelizer.UNIT )
+          .addScalar( Voxelizer.UNIT / 2 );
+      }
+
+      if ( this.rolloverMesh.position.y < 0 ) {
         this.rolloverMesh.position.y += Voxelizer.UNIT;
       }
 
@@ -292,7 +399,7 @@ export default class World extends Component<Props, State> {
     
     if ( this.mouseDownCoords.x !== this.mouse.x || this.mouseDownCoords.y !== this.mouse.y ) return;
     
-    if (this.state.viewingHistory) return;
+    if ( this.state.viewingHistory || this.state.viewingByPlayer ) return;
 
     // deleting or choosing color -- find closest
     if ( e.shiftKey || this.state.action === 'chooseColor' ) {
@@ -354,11 +461,16 @@ export default class World extends Component<Props, State> {
     let mesh;
     if (this.state.type === MeshData.SPHERE) {
       mesh = Voxelizer.sphere(this.state.color);
+    } else if (this.state.type === MeshData.BEAM) {
+      mesh = Voxelizer.beam(this.state.color);
     } else {
       mesh = Voxelizer.voxel(this.state.color);
     }
+
     const p = this.rolloverMesh.position;
     mesh.position.set(p.x, p.y, p.z);
+
+    mesh.userData.user = this.props.manager.get('user');
 
     this.dataRef.push(Voxelizer.meshToData(mesh));
 
@@ -399,6 +511,34 @@ export default class World extends Component<Props, State> {
     this.draw();
   }
 
+  typeChange(c: Object) {
+
+    if (!c.hasOwnProperty('type')) throw new Error("Can't change type if no type given.");
+
+    if (c.type === MeshData.BEAM) {
+
+      this.scene.remove(this.rolloverMesh);
+      this.rolloverMesh = Voxelizer.beam(0x5555ff, 0.5);
+      this.scene.add(this.rolloverMesh);
+
+    } else {
+      this.scene.remove(this.rolloverMesh);
+      this.rolloverMesh = Voxelizer.voxel(0x5555ff, 0.5);
+      this.scene.add(this.rolloverMesh);
+    }
+
+    this.setState({ type: c.type });
+  }
+
+  viewByPlayer() {
+    this.setState({
+      viewingByPlayer: !this.state.viewingByPlayer
+    }, () => {
+      this.update();
+      this.draw();
+    });
+  }
+
   viewHistory() {
 
     this.rolloverMesh.visible = false;
@@ -430,6 +570,7 @@ export default class World extends Component<Props, State> {
             this.scene.add(mesh);
             this.objects.add(mesh);
 
+            this.update();
             this.draw();
 
           }, timeout());

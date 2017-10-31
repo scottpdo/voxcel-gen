@@ -1,7 +1,8 @@
 .main {
   height: 100vh;
+  overflow-y: scroll;
   position: absolute;
   top: 0;
-  left: 110px;
-  width: calc(100% - 110px);
+  left: 140px;
+  width: calc(100% - 140px);
 }

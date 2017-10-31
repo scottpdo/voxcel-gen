@@ -4,6 +4,7 @@ import React, { Component } from 'react';
 import * as firebase from 'firebase';
 import { Link } from 'react-router-dom';
 
+import Chat from './Chat';
 import World from './World';
 import Manager from './Manager';
 import MeshData from './scene/MeshData';
@@ -12,6 +13,7 @@ import '../css/Admin.css';
 
 type Props = {
   db: firebase.database,
+  directory: Object,
   manager: Manager
 };
 
@@ -24,8 +26,11 @@ export default class Admin extends Component<Props, State> {
 
   chooseColor: Function;
   colorChange: Function;
+  displayName: Function;
   leaveWorld: Function;
   typeChange: Function;
+  updateName: Function;
+  viewByPlayer: Function;
   viewHistory: Function;
 
   constructor() {
@@ -34,13 +39,17 @@ export default class Admin extends Component<Props, State> {
 
     this.state = {
       color: 0x666666,
+      displayName: "",
       world: null
     };
 
     this.chooseColor = this.chooseColor.bind(this);
     this.colorChange = this.colorChange.bind(this);
+    this.displayName = this.displayName.bind(this);
     this.leaveWorld = this.leaveWorld.bind(this);
     this.typeChange = this.typeChange.bind(this);
+    this.updateName = this.updateName.bind(this);
+    this.viewByPlayer = this.viewByPlayer.bind(this);
     this.viewHistory = this.viewHistory.bind(this);
   }
 
@@ -48,15 +57,21 @@ export default class Admin extends Component<Props, State> {
 
     this.props.manager.on('worldChange', world => {
       this.setState({ world });
-    });
-
-    this.props.manager.on('colorChosen', c => {
+    }).on('colorChosen', c => {
       this.refs.colorpicker.value = '#' + c.color.toString(16);
-    });
+    }).on('updateDirectory', this.displayName);
   }
 
   leaveWorld() {
     this.setState({ world: null });
+  }
+  
+  displayName() {
+    
+    const userId = this.props.manager.get('user');
+    const directory = this.props.directory;
+
+    this.refs.displayName.value = directory.get(userId);
   }
 
   colorChange(e: Event) {
@@ -71,6 +86,18 @@ export default class Admin extends Component<Props, State> {
 
   chooseColor(e: Event) {
     this.props.manager.trigger('chooseColor');
+  }
+
+  updateName() {
+
+    const name = this.refs.displayName.value;
+    const id = this.props.manager.get('user');
+
+    this.props.db.ref('users/').child(id).set(name);
+  }
+
+  viewByPlayer(e: Event) {
+    this.props.manager.trigger('viewByPlayer');
   }
 
   viewHistory(e: Event) {
@@ -102,6 +129,15 @@ export default class Admin extends Component<Props, State> {
       <button className="admin__button admin__button--small" onClick={this.viewHistory}>View History</button>
     );
 
+    const viewByPlayer = (
+      <div>
+        <label className="admin__label">
+          View By Player
+          <input type="checkbox" className="admin__checkbox" onChange={this.viewByPlayer} />
+        </label>
+      </div>
+    );
+
     const typeSelect = (
       <div>
         <label htmlFor="admin__select" className="admin__label">Type</label>
@@ -120,14 +156,24 @@ export default class Admin extends Component<Props, State> {
 
     const exists = this.state.world !== null;
 
+    const worldName = exists ? this.state.world.world : "";
+
     return (
       <div className="admin">
         <Link to="/" className="admin__button" onClick={this.leaveWorld}>Main</Link>
+        <label className="admin__label" htmlFor="display-name">Your name:</label>
+        <input 
+          className="admin__input" 
+          id="display-name"
+          ref="displayName" 
+          onKeyUp={this.updateName} />
         {exists ? <hr /> : null}
         {exists ? colorpicker : null}
         {exists ? eyeDropper : null}
         {exists ? typeSelect : null}
         {exists ? viewHistory : null}
+        {exists ? viewByPlayer : null}
+        {exists ? <Chat db={this.props.db} world={worldName} directory={this.props.directory} /> : null}
       </div>
     );
   }
