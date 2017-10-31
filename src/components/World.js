@@ -306,7 +306,7 @@ export default class World extends Component<Props, State> {
 
   onMouseMove(e: SyntheticEvent) {
 
-    if (this.state.viewingHistory) return this.draw();
+    if (this.state.viewingHistory || this.state.viewingByPlayer) return this.draw();
 
     const rect = this.canvas.getBoundingClientRect();
 
@@ -399,7 +399,7 @@ export default class World extends Component<Props, State> {
     
     if ( this.mouseDownCoords.x !== this.mouse.x || this.mouseDownCoords.y !== this.mouse.y ) return;
     
-    if (this.state.viewingHistory) return;
+    if ( this.state.viewingHistory || this.state.viewingByPlayer ) return;
 
     // deleting or choosing color -- find closest
     if ( e.shiftKey || this.state.action === 'chooseColor' ) {

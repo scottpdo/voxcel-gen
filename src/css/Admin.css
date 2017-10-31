@@ -43,6 +43,14 @@
   vertical-align: middle;
 }
 
+.admin__input {
+  font-family: Courier, sans-serif;
+  font-size: 14px;
+  display: block;
+  padding: 4px;
+  width: 100%;
+}
+
 .admin__label {
   font-size: 12px;
 }
