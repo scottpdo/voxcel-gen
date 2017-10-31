@@ -4,6 +4,7 @@ import React, { Component } from 'react';
 import * as firebase from 'firebase';
 import { Link } from 'react-router-dom';
 
+import Chat from './Chat';
 import World from './World';
 import Manager from './Manager';
 import MeshData from './scene/MeshData';
@@ -112,7 +113,7 @@ export default class Admin extends Component<Props, State> {
       <div>
         <label className="admin__label">
           View By Player
-          <input type="checkbox" class="admin__checkbox" onChange={this.viewByPlayer} />
+          <input type="checkbox" className="admin__checkbox" onChange={this.viewByPlayer} />
         </label>
       </div>
     );
@@ -136,6 +137,8 @@ export default class Admin extends Component<Props, State> {
 
     const exists = this.state.world !== null;
 
+    const worldName = exists ? this.state.world.world : "";
+
     return (
       <div className="admin">
         <Link to="/" className="admin__button" onClick={this.leaveWorld}>Main</Link>
@@ -145,6 +148,7 @@ export default class Admin extends Component<Props, State> {
         {exists ? typeSelect : null}
         {exists ? viewHistory : null}
         {exists ? viewByPlayer : null}
+        {exists ? <Chat db={this.props.db} world={worldName} /> : null}
       </div>
     );
   }
