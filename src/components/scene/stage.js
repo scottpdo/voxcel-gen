@@ -7,9 +7,9 @@ const THREE = require('three');
 
 export default function stage(world: World) {
 
-	const geo = new THREE.PlaneGeometry(100000, 100000);
+	const geo = new THREE.PlaneGeometry(1000, 1000);
 	const mat = new THREE.MeshLambertMaterial({
-		color: 0x888888
+		color: 0xaaaaaa
 	});
 
 	let groundPlane = new THREE.Mesh(geo, mat);

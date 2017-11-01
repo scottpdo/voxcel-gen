@@ -2,6 +2,17 @@
   padding: 40px;
 }
 
+.worlds__addnew {
+  color: #666;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.worlds__instructions {
+  font-size: 0.8em;
+  float: right;
+}
+
 .worlds__ul {
   margin: 0;
   padding: 0;
