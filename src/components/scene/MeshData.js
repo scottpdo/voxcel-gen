@@ -31,6 +31,7 @@ export default class MeshData {
     if (obj.hasOwnProperty('y') && _.isNumber(obj.y)) result.y = obj.y;
     if (obj.hasOwnProperty('z') && _.isNumber(obj.z)) result.z = obj.z;
     if (obj.hasOwnProperty('color') && _.isNumber(obj.color)) result.color = obj.color;
+    if (obj.hasOwnProperty('rotation') && _.isString(obj.rotation)) result.rotation = obj.rotation;
     if (obj.hasOwnProperty('type') && _.isNumber(obj.type)) result.type = obj.type;
     if (obj.hasOwnProperty('user') && _.isString(obj.user)) result.user = obj.user;
     
