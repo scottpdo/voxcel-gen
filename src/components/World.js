@@ -586,6 +586,8 @@ export default class World extends Component<Props, State> {
         if (n === 0) return this.setState({ viewingHistory: false });
 
         let i = 0;
+        // timeout() references an external i that increments
+        // so that we can increase the timeout with each iteration
         let timeout = ():number => i * 250;
         
         snapshot.forEach(child => {
