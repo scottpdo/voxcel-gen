@@ -16,7 +16,7 @@ export default class Voxelizer {
 
   static SPHERE_GEO = new THREE.SphereGeometry(UNIT * 0.75, 12, 12);
 
-  static BEAM_GEO = new THREE.BoxGeometry(UNIT / 8, 5 * UNIT / 4, UNIT / 8);
+  static BEAM_GEO = new THREE.BoxGeometry(UNIT / 5, 6 * UNIT / 5, UNIT / 5);
 
   constructor() {
 
@@ -103,6 +103,7 @@ export default class Voxelizer {
     const y = (data.y * UNIT) + UNIT / 2;
     const z = (data.z * UNIT) + UNIT / 2;
     const color = data.hasOwnProperty('color') ? data.color : 0x666666;
+    const rotation = data.rotation;
 
     let mesh;
 
@@ -121,6 +122,10 @@ export default class Voxelizer {
 
     mesh.position.set(x, y, z);
 
+    if (rotation === "x") mesh.rotation.x = Math.PI / 2;
+    if (rotation === "y") mesh.rotation.y = Math.PI / 2;
+    if (rotation === "z") mesh.rotation.z = Math.PI / 2;
+
     // carry through user
     mesh.userData.user = data.user;
     
@@ -130,6 +135,8 @@ export default class Voxelizer {
   meshToData(mesh: THREE.Mesh): MeshData {
 
     const p = mesh.position;
+    const r = mesh.rotation;
+
     const x = (p.x - UNIT / 2) / UNIT;
     const y = (p.y - UNIT / 2) / UNIT;
     const z = (p.z - UNIT / 2) / UNIT;
@@ -144,6 +151,10 @@ export default class Voxelizer {
 
     const user = mesh.userData.user;
     result.user = user;
+
+    if (r.x !== 0) result.rotation = "x";
+    if (r.y !== 0) result.rotation = "y";
+    if (r.z !== 0) result.rotation = "z";
 
     return result;
   }

@@ -150,6 +150,7 @@ export default class Admin extends Component<Props, State> {
           
           <option value={MeshData.VOXEL}>Voxel</option>
           <option value={MeshData.SPHERE}>Sphere</option>
+          <option value={MeshData.BEAM}>Beam</option>
         </select>
       </div>
     );

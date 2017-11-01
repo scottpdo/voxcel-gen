@@ -8,6 +8,7 @@ export default class MeshData {
   y: number;
   z: number;
   color: ?number;
+  rotation: ?string;
   type: ?number;
   user: ?string;
 
@@ -19,6 +20,7 @@ export default class MeshData {
     this.x = x;
     this.y = y;
     this.z = z;
+    this.rotation = null;
   }
 
   static fromObject(obj: Object): MeshData {

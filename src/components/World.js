@@ -349,43 +349,64 @@ export default class World extends Component<Props, State> {
       // Beams: TODO
       if (this.state.type === MeshData.BEAM) {
 
-        // this.rolloverMesh.position.set(0, 0, 0);
-
         const closestPt = closestObj.point.clone().add(closestObj.face.normal);
+        
         closestPt.divideScalar( Voxelizer.UNIT )
-          .floor()
-          .multiplyScalar( Voxelizer.UNIT )
-          .addScalar( Voxelizer.UNIT / 2 );
+          .round()
+          .multiplyScalar( Voxelizer.UNIT );
 
-        let dist = Infinity;
-        let closestNeighbor;
+        let angle = Infinity;
+        let closestNeighbor = null;
         Voxelizer.neighbors(closestPt).forEach(pt => {
+
+          const closestProj = closestPt.clone().project(this.camera);
+
           const tmp = pt.clone().project(this.camera);
           const proj = new THREE.Vector2(tmp.x, tmp.y);
-          if (proj.distanceTo(this.mouse) < dist) {
-            dist = proj.distanceTo(this.mouse);
+
+          // normalize neighbor point and mouse relative to projected closest point
+          const normalizedMouse = this.mouse.clone().sub(closestProj);
+          const normalizedProj = proj.sub(closestProj);
+          const a = Math.abs(normalizedMouse.angle() - normalizedProj.angle());
+
+          if (a < angle) {
+            angle = a;
             closestNeighbor = pt;
           }
         });
 
         if (closestNeighbor === null) return;
-        // $FlowFixMe: this shouldn't throw an error, since closestNeighbor must exist here
-        closestNeighbor.sub(closestPt).divideScalar(2).add(closestPt);
 
-        this.rolloverMesh.position.copy(closestNeighbor);
+        // TODO: this is a bit messy...
+        if (closestNeighbor.y !== closestPt.y) {
+          this.rolloverMesh.rotation.x = 0;
+          this.rolloverMesh.rotation.z = 0;
+          closestPt.y += (closestNeighbor.y - closestPt.y) / 2;
+        } else if (closestNeighbor.x !== closestPt.x) {
+          this.rolloverMesh.rotation.x = 0;
+          this.rolloverMesh.rotation.z = Math.PI / 2;
+          closestPt.x += (closestNeighbor.x - closestPt.x) / 2;
+        } else if (closestNeighbor.z !== closestPt.z) {
+          this.rolloverMesh.rotation.x = Math.PI / 2;
+          this.rolloverMesh.rotation.z = 0;
+          closestPt.z += (closestNeighbor.z - closestPt.z) / 2;
+        }
+
+        this.rolloverMesh.position.copy(closestPt);
 
       // Voxels or Spheres
       } else {
-        this.rolloverMesh.position.copy( closestObj.point ).add( closestObj.face.normal );
-        this.rolloverMesh.position
-          .divideScalar( Voxelizer.UNIT )
+        
+        const closestPt = closestObj.point.clone().add(closestObj.face.normal);
+
+        closestPt.divideScalar( Voxelizer.UNIT )
           .floor()
           .multiplyScalar( Voxelizer.UNIT )
           .addScalar( Voxelizer.UNIT / 2 );
-      }
+          
+        if (closestPt.y < 0) closestPt.y += Voxelizer.UNIT;
 
-      if ( this.rolloverMesh.position.y < 0 ) {
-        this.rolloverMesh.position.y += Voxelizer.UNIT;
+        this.rolloverMesh.position.copy(closestPt);
       }
 
     } else {
@@ -473,7 +494,10 @@ export default class World extends Component<Props, State> {
     }
 
     const p = this.rolloverMesh.position;
-    mesh.position.set(p.x, p.y, p.z);
+    const r = this.rolloverMesh.rotation;
+    
+    mesh.position.copy(p);
+    mesh.rotation.copy(r);
 
     mesh.userData.user = this.props.manager.get('user');
 

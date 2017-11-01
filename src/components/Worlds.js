@@ -118,17 +118,13 @@ export default class Worlds extends Component<Props, State> {
       </li>
       );
     });
-    
-    const addNewStyle = {
-      color: '#666',
-      cursor: 'pointer',
-      textDecoration: 'underline'
-    };
 
     return (
       <div className="worlds">
         <h2>
-          Worlds: (<span onClick={this.addWorld.bind(this, "What is your world's name?")} style={addNewStyle}>Add New</span>)</h2>
+          Worlds: (<span onClick={this.addWorld.bind(this, "What is your world's name?")} className="worlds__addnew">Add New</span>)
+          <Link to="/instructions" className="worlds__instructions">Instructions</Link>
+        </h2>
         <ul className="worlds__ul">{worlds}</ul>
       </div>
     );
