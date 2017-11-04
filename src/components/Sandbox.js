@@ -1,10 +1,7 @@
 // @flow
 
 import React, { Component, SyntheticEvent } from 'react';
-import * as firebase from 'firebase';
-import _ from 'lodash';
 
-// import CONFIG from '../config';
 import Manager from './Manager';
 import stage from './scene/stage';
 import _Camera from './scene/Camera';
@@ -17,31 +14,20 @@ const THREE = require('three');
 const Voxelizer = new VoxelizerCtr();
 
 type Props = {
-  db: firebase.database,
-  manager: Manager,
-  storage: firebase.storage,
-  match: {
-    params: {
-      world: string
-    }
-  }
+  manager: Manager
 };
 
 type State = {
   action: ?string,
   color: number,
-  displayName: string,
   exists: number,
   type: number,
-  viewingByPlayer: boolean,
-  viewingHistory: boolean
 };
 
-export default class World extends Component<Props, State> {
+export default class Sandbox extends Component<Props, State> {
 
   camera: THREE.PerspectiveCamera;
   canvas: HTMLCanvasElement;
-  dataRef: firebase.ref;
   draw: Function;
   init: Function;
   mouse: THREE.Vector2;
@@ -53,15 +39,12 @@ export default class World extends Component<Props, State> {
   onResize: Function;
   raycaster: THREE.Raycaster;
   renderer: THREE.WebGlRenderer;
+  renderVoxel: Function;
   rolloverMesh: THREE.Mesh;
   scene: THREE.Scene;
-  screenshot: Function;
-  screenshotInterval: number;
   typeChange: Function;
+  unrenderVoxel: Function;
   update: Function;
-  userLookup: Object;
-  viewByPlayer: Function;
-  viewHistory: Function;
   world: string;
 
   constructor() {
@@ -71,15 +54,10 @@ export default class World extends Component<Props, State> {
     this.state = {
       action: null,
       color: 0x666666,
-      displayName: "",
-      exists: 0, // indeterminate... -1 = does not exist, 1 = exists
       type: MeshData.VOXEL,
-      viewingByPlayer: false,
-      viewingHistory: false
     };
 
     this.objects = new Objects();
-    this.userLookup = {};
 
     this.draw = this.draw.bind(this);
     this.init = this.init.bind(this);
@@ -87,17 +65,12 @@ export default class World extends Component<Props, State> {
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseUp = this.onMouseUp.bind(this);
     this.onResize = this.onResize.bind(this);
-    this.screenshot = this.screenshot.bind(this);
+    this.renderVoxel = this.renderVoxel.bind(this);
     this.typeChange = this.typeChange.bind(this);
-    this.update = this.update.bind(this);
-    this.viewByPlayer = this.viewByPlayer.bind(this);
-    this.viewHistory = this.viewHistory.bind(this);
+    this.unrenderVoxel = this.unrenderVoxel.bind(this);
   }
 
   componentDidMount() {
-    
-    // set user
-    Voxelizer.setUser(this.props.manager.get('user'));
     
     // trigger worldChange for admin
     this.props.manager.trigger('worldChange', this);
@@ -109,45 +82,20 @@ export default class World extends Component<Props, State> {
     .on('chooseColor', c => {
       this.setState({ action: 'chooseColor' });
     })
-    .on('typeChange', this.typeChange)
-    .on('viewByPlayer', this.viewByPlayer)
-    .on('viewHistory', this.viewHistory);
+    .on('typeChange', this.typeChange);
 
-    this.world = this.props.match.params.world;
-
-    this.props.db.ref('worldIndex/' + this.world).once('value', (snapshot) => {
-      // if no value, then it doesn't exist, serve 404
-      if (_.isNil(snapshot.val())) return this.setState({ exists: -1 });
-      // if it exists, we're good to go and initialize
-      this.setState({ 
-        displayName: snapshot.val(),
-        exists: 1 
-      }, this.init);
-    });
-
-    setTimeout(this.screenshot, 5000);
-
-    this.screenshotInterval = setInterval(this.screenshot, 30 * 1000);
+    this.init();
 
     window.addEventListener('resize', this.onResize);
   }
 
   componentWillUnmount() {
-
-    clearInterval(this.screenshotInterval);
-
-    // TODO: destroy scene, objects, etc.
-    this.dataRef.off();
     
     // remove colorChange listener
     this.props.manager
       .off('colorChange')
       .off('chooseColor')
-      .off('typeChange')
-      .off('viewByPlayer')
-      .off('viewHistory');
-
-    this.setState({ exists: 0 });
+      .off('typeChange');
 
     window.removeEventListener('resize', this.onResize);
     
@@ -157,7 +105,6 @@ export default class World extends Component<Props, State> {
   init() {
 
     // set up reference to this world and canvas
-    this.dataRef = this.props.db.ref('worlds/' + this.world);
     this.canvas = this.refs.canvas;
 
     this.scene = new THREE.Scene();
@@ -183,74 +130,6 @@ export default class World extends Component<Props, State> {
     
     this.onResize();
 
-    let colorIndex = 0;
-    // hex strings
-    const colors = [
-      '4DCCBD', // medium turquoise
-      '231651', // russian violet
-      '2374AB', // lapis lazuli
-      'FF8484', // tulip
-      '5BC0EB', // blue jeans
-      'FDE74C', // "gargoyle gas" (!)
-      '9BC53D', // android green
-      'C3423F', // english vermilion
-      '211A1E', // eerie black
-    ];
-
-    const renderVoxel = (child) => {
-
-      const mesh = Voxelizer.dataToMesh(child.val());
-      
-      const user = child.val().user;
-
-      // always be checking if user is in lookup
-      // and if not, add it with a corresponding material
-      if (!_.isNil(user) && !this.userLookup.hasOwnProperty(user)) {
-        const color = parseInt(colors[colorIndex], 16);
-        this.userLookup[user] = new THREE.MeshLambertMaterial({ color });
-        colorIndex++;
-        if (colorIndex === colors.length) {
-          console.warn("Number of users exceeded number of colors");
-          colorIndex = 0;
-        }
-      }
-  
-      this.scene.add(mesh);
-      this.objects.add(mesh);
-
-      this.draw();
-    };
-
-    const unRenderVoxel = (child) => {
-
-      const data = MeshData.fromObject(child.val());
-      const mesh = Voxelizer.dataToMesh(data);
-      let match = null;
-
-      for (let obj of this.objects.all()) {
-        if (obj.position.equals(mesh.position)) {
-          match = obj;
-          break;
-        }
-      }
-
-      if (match !== null) {
-        match.geometry.dispose();
-        match.material.dispose();
-        this.scene.remove(match);
-        this.objects.remove(match);
-      }
-
-      this.draw();
-      
-    };
-
-    // on subsequent new voxels
-    this.dataRef.on('child_added', renderVoxel);
-
-    // on deleted voxels
-    this.dataRef.on('child_removed', unRenderVoxel);
-
     // not sure why, but can't add this to <canvas> in render()
     this.refs.canvas.addEventListener('wheel', this.draw);
 
@@ -264,37 +143,25 @@ export default class World extends Component<Props, State> {
     this.raycaster.setFromCamera( this.mouse, this.camera );
   }
 
-  /**
-   * Update all the objects in the scene (for viewing by player, etc.)
-   * DOES NOT CALL .draw()
-   */
-  update() {
-    
-    this.objects.all().forEach(object => {
+  renderVoxel(mesh: THREE.Mesh) {
 
-      if (object.name === 'groundPlane') return;
+    this.scene.add(mesh);
+    this.objects.add(mesh);
 
-      const user = object.userData.user;
+    this.draw();
+  }
 
-      // if viewing by user, switch out the material
-      if (this.state.viewingByPlayer) {
-        if (!_.isNil(user)) {
-          object.material = this.userLookup[user];
-        } else {
-          object.visible = false;
-        }
-      // reset
-      } else {
-        object.material = object.userData.defaultMaterial;
-        object.visible = true;
-      }
-    });
+  unrenderVoxel(mesh: THREE.Mesh) {
+
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+    this.scene.remove(mesh);
+    this.objects.remove(mesh);
+
+    this.draw();
   }
 
   onResize() {
-    
-    // only run if we've found a world
-    if (this.state.exists < 1) return;
     
     const WIDTH = this.refs.container.clientWidth;
     const HEIGHT = this.refs.container.clientHeight;
@@ -310,8 +177,6 @@ export default class World extends Component<Props, State> {
   }
 
   onMouseMove(e: SyntheticEvent) {
-
-    if (this.state.viewingHistory || this.state.viewingByPlayer) return this.draw();
 
     const rect = this.canvas.getBoundingClientRect();
 
@@ -424,8 +289,6 @@ export default class World extends Component<Props, State> {
   onMouseUp(e: MouseEvent) {
     
     if ( this.mouseDownCoords.x !== this.mouse.x || this.mouseDownCoords.y !== this.mouse.y ) return;
-    
-    if ( this.state.viewingHistory || this.state.viewingByPlayer ) return;
 
     // deleting or choosing color -- find closest
     if ( e.shiftKey || this.state.action === 'chooseColor' ) {
@@ -467,17 +330,10 @@ export default class World extends Component<Props, State> {
         return;
       }
 
-      const data = Voxelizer.meshToData(closestObj.object);
-      
-      // find matching data from ref
-      this.dataRef.once('value', snapshot => {
-        snapshot.forEach(child => {
-          const test = MeshData.fromObject(child.val());
-          if (test.matches(data)) this.dataRef.child(child.key).remove();
-        });
-      });
-
-      return;
+      // otherwise, we are deleting
+      const mesh = closestObj.object;
+      if (mesh.name === 'groundPlane') return; // don't delete the ground plane!
+      return this.unrenderVoxel(mesh);
     }
 
     // if not deleting, and the rolloverMesh is not visible,
@@ -499,49 +355,10 @@ export default class World extends Component<Props, State> {
     mesh.position.copy(p);
     mesh.rotation.copy(r);
 
-    mesh.userData.user = this.props.manager.get('user');
-
-    this.dataRef.push(Voxelizer.meshToData(mesh));
+    this.renderVoxel(mesh);
 
     // hide rolloverMesh to prevent placing multiple in same position
     this.rolloverMesh.visible = false;
-  }
-
-  screenshot() {
-
-    const storage = this.props.storage.ref('images/' + this.world);
-
-    if (this.state.exists < 1) return;
-
-    // don't take screenshot if viewing history or viewing by player --
-    // will not represent the world as it `is`
-    if (this.state.viewingHistory || this.state.viewingByPlayer) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 600;
-    canvas.height = 600 * this.canvas.height / this.canvas.width;
-
-    // save state of rolloverMesh and camera
-    const prevRolloverState = this.rolloverMesh.visible;
-    const prevCamera = this.camera.clone();
-
-    // hide rolloverMesh, look top down
-    this.rolloverMesh.visible = false;
-    this.camera.position.set(0, 1000, 0);
-    this.camera.lookAt(new THREE.Vector3());
-
-    this.draw();
-
-    canvas.getContext('2d').drawImage(this.canvas, 0, 0, canvas.width, canvas.height);
-
-    const data = canvas.toDataURL();
-
-    storage.putString(data, 'data_url');
-
-    // restore everything
-    this.rolloverMesh.visible = prevRolloverState;
-    this.camera.copy(prevCamera);
-    this.draw();
   }
 
   typeChange(c: Object) {
@@ -561,65 +378,6 @@ export default class World extends Component<Props, State> {
     }
 
     this.setState({ type: c.type });
-  }
-
-  viewByPlayer() {
-    this.setState({
-      viewingByPlayer: !this.state.viewingByPlayer
-    }, () => {
-      if (this.state.viewingByPlayer) this.rolloverMesh.visible = false;
-      this.update();
-      this.draw();
-    });
-  }
-
-  viewHistory() {
-
-    this.rolloverMesh.visible = false;
-
-    this.setState({ viewingHistory: true }, () => {
-
-      // remove all scene objects except groundPlane
-      this.objects.all()
-        .filter(obj => obj.name !== 'groundPlane')
-        .forEach(obj => { this.scene.remove(obj) });
-
-      this.dataRef.once('value', snapshot => {
-        
-        const n = snapshot.numChildren();
-        if (n === 0) return this.setState({ viewingHistory: false });
-
-        let i = 0;
-        // timeout() references an external i that increments
-        // so that we can increase the timeout with each iteration
-        let timeout = ():number => i * 250;
-        
-        snapshot.forEach(child => {
-          
-          i++;
-          
-          setTimeout(() => {
-
-            const meshData = MeshData.fromObject(child.val());
-            const mesh = Voxelizer.dataToMesh(meshData);
-            
-            this.scene.add(mesh);
-            this.objects.add(mesh);
-
-            this.update();
-            this.draw();
-
-          }, timeout());
-        });
-
-        setTimeout(() => {
-          this.setState({ viewingHistory: false });
-        }, timeout());
-      });
-
-      this.draw();
-
-    });
   }
 
   render() {
@@ -658,7 +416,7 @@ export default class World extends Component<Props, State> {
           onMouseDown={this.onMouseDown} 
           onMouseMove={this.onMouseMove}
           onMouseUp={this.onMouseUp} />
-        <h1 style={nameStyle}>{this.state.displayName}</h1>
+        <h1 style={nameStyle}>Sandbox</h1>
       </div>
     );
   }

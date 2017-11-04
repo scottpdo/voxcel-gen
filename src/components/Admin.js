@@ -2,10 +2,11 @@
 
 import React, { Component } from 'react';
 import * as firebase from 'firebase';
-import { Link } from 'react-router-dom';
+import { Link, Route } from 'react-router-dom';
 
 import Chat from './Chat';
 import World from './World';
+import Sandbox from './Sandbox';
 import Manager from './Manager';
 import MeshData from './scene/MeshData';
 
@@ -156,12 +157,14 @@ export default class Admin extends Component<Props, State> {
     );
 
     const exists = this.state.world !== null;
+    const isSandbox = this.state.world instanceof Sandbox;
 
     const worldName = exists ? this.state.world.world : "";
 
     return (
       <div className="admin">
         <Link to="/" className="admin__button" onClick={this.leaveWorld}>Main</Link>
+				<Route exact path="/" render={() => <Link to="/sandbox" className="admin__button">Sandbox</Link>} />
         <label className="admin__label" htmlFor="display-name">Your name:</label>
         <input 
           className="admin__input" 
@@ -172,9 +175,9 @@ export default class Admin extends Component<Props, State> {
         {exists ? colorpicker : null}
         {exists ? eyeDropper : null}
         {exists ? typeSelect : null}
-        {exists ? viewHistory : null}
-        {exists ? viewByPlayer : null}
-        {exists ? <Chat db={this.props.db} world={worldName} directory={this.props.directory} /> : null}
+        {exists && !isSandbox ? viewHistory : null}
+        {exists && !isSandbox ? viewByPlayer : null}
+        {exists && !isSandbox ? <Chat db={this.props.db} world={worldName} directory={this.props.directory} /> : null}
       </div>
     );
   }
