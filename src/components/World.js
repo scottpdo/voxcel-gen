@@ -513,6 +513,10 @@ export default class World extends Component<Props, State> {
 
     if (this.state.exists < 1) return;
 
+    // don't take screenshot if viewing history or viewing by player --
+    // will not represent the world as it `is`
+    if (this.state.viewingHistory || this.state.viewingByPlayer) return;
+
     const canvas = document.createElement('canvas');
     canvas.width = 600;
     canvas.height = 600 * this.canvas.height / this.canvas.width;
