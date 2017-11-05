@@ -24,6 +24,8 @@ export default class Chat extends Component<Props, State> {
   scrollToBottom: Function;
   toggle: Function;
 
+  static ENTER_KEY = 13; // 13 = keyCode for ENTER
+
   constructor() {
 
     super();
@@ -63,13 +65,13 @@ export default class Chat extends Component<Props, State> {
 
   onKeyup(e: KeyboardEvent) {
 
-    if (e.keyCode !== 13) return;
-    // 13 = enter = submit
+    if (e.keyCode !== Chat.ENTER_KEY) return;
 
     const user = store.get('user.id');
     const message = this.refs.message.value;
+    const time = new Date().getTime();
 
-    this.dataRef.push({ user, message }, () => {
+    this.dataRef.push({ user, message, time }, () => {
       this.refs.message.value = "";
     });
   }
