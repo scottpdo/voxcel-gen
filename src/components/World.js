@@ -665,6 +665,8 @@ export default class World extends Component<Props, State> {
 
           setTimeout(() => {
             action();
+            this.update();
+            this.draw();
             this.setState({ historyStep: (i + 1) / children.length });
           }, timeout);
         });
