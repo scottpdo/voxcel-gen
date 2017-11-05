@@ -1,0 +1,28 @@
+.world__container {
+  height: 100%;
+  width: 100%;
+}
+
+.world__name {
+  color: #fff;
+  position: absolute;
+  font-weight: normal;
+  top: 20px;
+  left: 20px;
+  margin: 0;
+  user-select: none;
+}
+
+.world__history {
+  background: #fff;
+  height: 3px;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.world__history--border {
+  background: red;
+  height: 3px;
+}
