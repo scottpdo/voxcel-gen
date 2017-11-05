@@ -4,10 +4,12 @@ import _ from 'lodash';
 
 export default class MeshData {
 
+  key: string;
   x: number;
   y: number;
   z: number;
-  time: number;
+  time: number;     // must be created at some time
+  deleted: ?number; // not necessarily deleted
   color: ?number;
   rotation: ?string;
   type: ?number;
@@ -24,16 +26,18 @@ export default class MeshData {
     this.rotation = null;
   }
 
-  static fromObject(obj: Object): MeshData {
+  static fromObject(key: string, obj: Object): MeshData {
     
     const result = new MeshData(0, 0, 0);
     
+    result.key = key;
     if (obj.hasOwnProperty('x') && _.isNumber(obj.x)) result.x = obj.x;
     if (obj.hasOwnProperty('y') && _.isNumber(obj.y)) result.y = obj.y;
     if (obj.hasOwnProperty('z') && _.isNumber(obj.z)) result.z = obj.z;
     if (obj.hasOwnProperty('color') && _.isNumber(obj.color)) result.color = obj.color;
     if (obj.hasOwnProperty('rotation') && _.isString(obj.rotation)) result.rotation = obj.rotation;
     if (obj.hasOwnProperty('time') && _.isNumber(obj.time)) result.time = obj.time;
+    if (obj.hasOwnProperty('deleted') && _.isNumber(obj.deleted)) result.deleted = obj.deleted;
     if (obj.hasOwnProperty('type') && _.isNumber(obj.type)) result.type = obj.type;
     if (obj.hasOwnProperty('user') && _.isString(obj.user)) result.user = obj.user;
     
@@ -44,7 +48,9 @@ export default class MeshData {
     
     const result = new MeshData(this.x, this.y, this.z);
 
+    result.key = this.key;
     result.time = this.time;
+    // if cloning it, guaranteed to not have been deleted
     
     if (!_.isNil(this.color)) result.color = this.color;
     if (!_.isNil(this.type)) result.type = this.type;

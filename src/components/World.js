@@ -13,6 +13,8 @@ import VoxelizerCtr from './scene/Voxelizer';
 import MeshData from './scene/MeshData';
 import Objects from './scene/Objects';
 
+import '../css/World.css';
+
 const THREE = require('three');
 
 const Voxelizer = new VoxelizerCtr();
@@ -33,6 +35,7 @@ type State = {
   color: number,
   displayName: string,
   exists: number,
+  historyStep: number,
   type: number,
   viewingByPlayer: boolean,
   viewingHistory: boolean
@@ -42,6 +45,7 @@ export default class World extends Component<Props, State> {
 
   camera: THREE.PerspectiveCamera;
   canvas: HTMLCanvasElement;
+  colorIndex: number;
   dataRef: firebase.ref;
   draw: Function;
   init: Function;
@@ -54,11 +58,13 @@ export default class World extends Component<Props, State> {
   onResize: Function;
   raycaster: THREE.Raycaster;
   renderer: THREE.WebGlRenderer;
+  renderVoxel: Function;
   rolloverMesh: THREE.Mesh;
   scene: THREE.Scene;
   screenshot: Function;
   screenshotInterval: number;
   typeChange: Function;
+  unRenderVoxel: Function;
   update: Function;
   userLookup: Object;
   viewByPlayer: Function;
@@ -70,6 +76,18 @@ export default class World extends Component<Props, State> {
   static INDETERMINATE = 0;
   static FOUND = 1;
 
+  static COLORS = [
+    '4DCCBD', // medium turquoise
+    '231651', // russian violet
+    '2374AB', // lapis lazuli
+    'FF8484', // tulip
+    '5BC0EB', // blue jeans
+    'FDE74C', // "gargoyle gas" (!)
+    '9BC53D', // android green
+    'C3423F', // english vermilion
+    '211A1E', // eerie black
+  ];
+
   constructor() {
 
     super();
@@ -79,11 +97,13 @@ export default class World extends Component<Props, State> {
       color: 0x666666,
       displayName: "",
       exists: World.INDETERMINATE,
+      historyStep: -1,
       type: MeshData.VOXEL,
       viewingByPlayer: false,
       viewingHistory: false
     };
 
+    this.colorIndex = 0;
     this.objects = new Objects();
     this.userLookup = {};
 
@@ -93,8 +113,10 @@ export default class World extends Component<Props, State> {
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseUp = this.onMouseUp.bind(this);
     this.onResize = this.onResize.bind(this);
+    this.renderVoxel = this.renderVoxel.bind(this);
     this.screenshot = this.screenshot.bind(this);
     this.typeChange = this.typeChange.bind(this);
+    this.unRenderVoxel = this.unRenderVoxel.bind(this);
     this.update = this.update.bind(this);
     this.viewByPlayer = this.viewByPlayer.bind(this);
     this.viewHistory = this.viewHistory.bind(this);
@@ -205,73 +227,11 @@ export default class World extends Component<Props, State> {
     
     this.onResize();
 
-    let colorIndex = 0;
-    // hex strings
-    const colors = [
-      '4DCCBD', // medium turquoise
-      '231651', // russian violet
-      '2374AB', // lapis lazuli
-      'FF8484', // tulip
-      '5BC0EB', // blue jeans
-      'FDE74C', // "gargoyle gas" (!)
-      '9BC53D', // android green
-      'C3423F', // english vermilion
-      '211A1E', // eerie black
-    ];
-
-    const renderVoxel = (child) => {
-
-      const mesh = Voxelizer.dataToMesh(child.val());
-      
-      const user = child.val().user;
-
-      // always be checking if user is in lookup
-      // and if not, add it with a corresponding material
-      if (!_.isNil(user) && !this.userLookup.hasOwnProperty(user)) {
-        const color = parseInt(colors[colorIndex], 16);
-        this.userLookup[user] = new THREE.MeshLambertMaterial({ color });
-        colorIndex++;
-        if (colorIndex === colors.length) {
-          console.warn("Number of users exceeded number of colors");
-          colorIndex = 0;
-        }
-      }
-  
-      this.scene.add(mesh);
-      this.objects.add(mesh);
-
-      this.draw();
-    };
-
-    const unRenderVoxel = (child) => {
-
-      const data = MeshData.fromObject(child.val());
-      const mesh = Voxelizer.dataToMesh(data);
-      let match = null;
-
-      for (let obj of this.objects.all()) {
-        if (obj.position.equals(mesh.position)) {
-          match = obj;
-          break;
-        }
-      }
-
-      if (match !== null) {
-        match.geometry.dispose();
-        match.material.dispose();
-        this.scene.remove(match);
-        this.objects.remove(match);
-      }
-
-      this.draw();
-      
-    };
-
     // on subsequent new voxels
-    this.dataRef.on('child_added', renderVoxel);
+    this.dataRef.on('child_added', child => { this.renderVoxel(child, false); });
 
     // on deleted voxels
-    this.dataRef.on('child_removed', unRenderVoxel);
+    this.dataRef.on('child_changed', this.unRenderVoxel);
 
     // not sure why, but can't add this to <canvas> in render()
     this.refs.canvas.addEventListener('wheel', this.draw);
@@ -283,6 +243,62 @@ export default class World extends Component<Props, State> {
     window.addEventListener('resize', this.onResize);
 
 		this.draw();
+    
+  }
+
+  renderVoxel(child: firebase.child, force: boolean = false) {
+    
+    // don't render deleted voxels
+    // (unless forcing a render)
+    if (!force && _.isNumber(child.val().deleted)) return;
+
+    const data = MeshData.fromObject(child.key, child.val());
+    const mesh = Voxelizer.dataToMesh(data);
+    
+    const user = child.val().user;
+
+    // always be checking if user is in lookup
+    // and if not, add it with a corresponding material
+    if (!_.isNil(user) && !this.userLookup.hasOwnProperty(user)) {
+      const color = parseInt(World.COLORS[this.colorIndex], 16);
+      this.userLookup[user] = new THREE.MeshLambertMaterial({ color });
+      this.colorIndex++;
+      if (this.colorIndex === World.COLORS.length) {
+        console.warn("Number of users exceeded number of colors");
+        this.colorIndex = 0;
+      }
+    }
+
+    this.scene.add(mesh);
+    this.objects.add(mesh);
+
+    this.draw();
+  }
+
+  unRenderVoxel(child: firebase.child) {
+    
+    // unrender only if deleting
+    if (!_.isNumber(child.val().deleted)) return;
+
+    const data = MeshData.fromObject(child.key, child.val());
+    const mesh = Voxelizer.dataToMesh(data);
+    let match = null;
+
+    for (let obj of this.objects.all()) {
+      if (obj.position.equals(mesh.position)) {
+        match = obj;
+        break;
+      }
+    }
+
+    if (match !== null) {
+      match.geometry.dispose();
+      match.material.dispose();
+      this.scene.remove(match);
+      this.objects.remove(match);
+    }
+
+    this.draw();
     
   }
 
@@ -495,14 +511,10 @@ export default class World extends Component<Props, State> {
         return;
       }
 
-      const data = Voxelizer.meshToData(closestObj.object);
-      
-      // find matching data from ref
-      this.dataRef.once('value', snapshot => {
-        snapshot.forEach(child => {
-          const test = MeshData.fromObject(child.val());
-          if (test.matches(data)) this.dataRef.child(child.key).remove();
-        });
+      const key = Voxelizer.meshToData(closestObj.object).key;
+
+      this.dataRef.child(key).update({ 
+        deleted: new Date().getTime()
       });
 
       return;
@@ -604,6 +616,8 @@ export default class World extends Component<Props, State> {
 
   viewHistory() {
 
+    const duration = 10000;
+
     this.rolloverMesh.visible = false;
 
     this.setState({ viewingHistory: true }, () => {
@@ -618,32 +632,48 @@ export default class World extends Component<Props, State> {
         const n = snapshot.numChildren();
         if (n === 0) return this.setState({ viewingHistory: false });
 
+        let startTime = -1;
+        let endTime = -1;
+        let children = [];
+        let actions = [];
         let i = 0;
-        // timeout() references an external i that increments
-        // so that we can increase the timeout with each iteration
-        let timeout = ():number => i * 250;
         
         snapshot.forEach(child => {
-          
-          i++;
-          
+
+          children.push(child);
+          actions.push('added');
+
+          if (_.isNumber(child.val().deleted)) {
+            children.push(child);
+            actions.push('deleted');
+          }
+        });
+
+        const factor = duration / children.length;
+
+        children.forEach((child, i) => {
+
+          const time = child.val().time;
+          const timeout = i * factor;
+          let action;
+
+          if (actions[i] === 'added') {
+            action = this.renderVoxel.bind(this, child, true);
+          } else if (actions[i] === 'deleted') {
+            action = this.unRenderVoxel.bind(this, child);
+          }
+
           setTimeout(() => {
-
-            const meshData = MeshData.fromObject(child.val());
-            const mesh = Voxelizer.dataToMesh(meshData);
-            
-            this.scene.add(mesh);
-            this.objects.add(mesh);
-
+            action();
             this.update();
             this.draw();
-
-          }, timeout());
+            this.setState({ historyStep: (i + 1) / children.length });
+          }, timeout);
         });
 
         setTimeout(() => {
           this.setState({ viewingHistory: false });
-        }, timeout());
+        }, duration + 1000);
       });
 
       this.draw();
@@ -675,28 +705,28 @@ export default class World extends Component<Props, State> {
     }
 
     const style = {
-      cursor: this.state.action === 'chooseColor' ? 'copy' : 'default',
-      height: '100%',
-      width: '100%'
+      cursor: this.state.action === 'chooseColor' ? 'copy' : 'default'
     };
 
-    const nameStyle = {
-      color: '#fff',
-      position: 'absolute',
-      fontWeight: 'normal',
-      top: 20,
-      left: 20,
-      margin: 0,
-      userSelect: 'none'
+    const worldHistoryStyle = {
+      display: this.state.viewingHistory ? 'block' : 'none'
+    };
+
+    const borderStyle = {
+      transition: '0.1s',
+      width: this.state.viewingHistory ? (this.state.historyStep * 100).toString() + '%' : 0
     };
     
     return (
-      <div style={style} ref="container">
+      <div style={style} ref="container" className="world__container">
         <canvas ref="canvas" 
           onMouseDown={this.onMouseDown} 
           onMouseMove={this.onMouseMove}
           onMouseUp={this.onMouseUp} />
-        <h1 style={nameStyle}>{this.state.displayName}</h1>
+        <h1 className="world__name">{this.state.displayName}</h1>
+        <div className="world__history" style={worldHistoryStyle}>
+          <div className="world__history--border" style={borderStyle}></div>
+        </div>
       </div>
     );
   }

@@ -127,7 +127,8 @@ export default class Voxelizer {
     if (rotation === "y") mesh.rotation.y = Math.PI / 2;
     if (rotation === "z") mesh.rotation.z = Math.PI / 2;
 
-    // carry through user and time
+    // carry through key, user, and time
+    mesh.userData.key = data.key;
     mesh.userData.user = data.user;
     mesh.userData.time = data.time || -1;
     
@@ -146,6 +147,7 @@ export default class Voxelizer {
     const result = new MeshData(x, y, z);
 
     result.color = mesh.material.color.getHex();
+    if (mesh.userData.key) result.key = mesh.userData.key;
     result.time = mesh.userData.time || -1;
     result.type = mesh.userData.type;
     result.user = mesh.userData.user;
