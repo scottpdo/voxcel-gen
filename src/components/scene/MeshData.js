@@ -7,6 +7,7 @@ export default class MeshData {
   x: number;
   y: number;
   z: number;
+  time: number;
   color: ?number;
   rotation: ?string;
   type: ?number;
@@ -32,6 +33,7 @@ export default class MeshData {
     if (obj.hasOwnProperty('z') && _.isNumber(obj.z)) result.z = obj.z;
     if (obj.hasOwnProperty('color') && _.isNumber(obj.color)) result.color = obj.color;
     if (obj.hasOwnProperty('rotation') && _.isString(obj.rotation)) result.rotation = obj.rotation;
+    if (obj.hasOwnProperty('time') && _.isNumber(obj.time)) result.time = obj.time;
     if (obj.hasOwnProperty('type') && _.isNumber(obj.type)) result.type = obj.type;
     if (obj.hasOwnProperty('user') && _.isString(obj.user)) result.user = obj.user;
     
@@ -41,6 +43,8 @@ export default class MeshData {
   clone(): MeshData {
     
     const result = new MeshData(this.x, this.y, this.z);
+
+    result.time = this.time;
     
     if (!_.isNil(this.color)) result.color = this.color;
     if (!_.isNil(this.type)) result.type = this.type;
@@ -54,6 +58,8 @@ export default class MeshData {
     if (this.x !== other.x) return false;
     if (this.y !== other.y) return false;
     if (this.z !== other.z) return false;
+
+    if (this.time !== other.time) return false;
 
     if (!_.isNil(this.color) && !_.isNil(other.color)) {
       if (this.color !== other.color) return false;

@@ -528,6 +528,7 @@ export default class World extends Component<Props, State> {
     mesh.rotation.copy(r);
 
     mesh.userData.user = this.props.manager.get('user');
+    mesh.userData.time = new Date().getTime();
 
     this.dataRef.push(Voxelizer.meshToData(mesh));
 

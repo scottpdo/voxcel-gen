@@ -104,6 +104,7 @@ export default class Voxelizer {
     const z = (data.z * UNIT) + UNIT / 2;
     const color = data.hasOwnProperty('color') ? data.color : 0x666666;
     const rotation = data.rotation;
+    const time = data.time;
 
     let mesh;
 
@@ -126,8 +127,9 @@ export default class Voxelizer {
     if (rotation === "y") mesh.rotation.y = Math.PI / 2;
     if (rotation === "z") mesh.rotation.z = Math.PI / 2;
 
-    // carry through user
+    // carry through user and time
     mesh.userData.user = data.user;
+    mesh.userData.time = data.time || -1;
     
     return mesh;
   }
@@ -143,14 +145,10 @@ export default class Voxelizer {
 
     const result = new MeshData(x, y, z);
 
-    const color = mesh.material.color.getHex();
-    result.color = color;
-
-    const type = mesh.userData.type;
-    result.type = type;
-
-    const user = mesh.userData.user;
-    result.user = user;
+    result.color = mesh.material.color.getHex();
+    result.time = mesh.userData.time || -1;
+    result.type = mesh.userData.type;
+    result.user = mesh.userData.user;
 
     if (r.x !== 0) result.rotation = "x";
     if (r.y !== 0) result.rotation = "y";

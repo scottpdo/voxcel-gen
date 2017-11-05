@@ -160,7 +160,7 @@ export default class Admin extends Component<Props, State> {
     const exists = world !== null && world.state.exists === World.FOUND;
     const isSandbox = world instanceof Sandbox;
 
-    const worldName = exists ? world.name : "";
+    const worldName = exists ? world.world : "";
 
     return (
       <div className="admin">
