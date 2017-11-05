@@ -3,6 +3,7 @@
 import React, { Component, SyntheticEvent } from 'react';
 
 import Manager from './Manager';
+import World from './World';
 import stage from './scene/stage';
 import _Camera from './scene/Camera';
 import VoxelizerCtr from './scene/Voxelizer';
@@ -54,6 +55,7 @@ export default class Sandbox extends Component<Props, State> {
     this.state = {
       action: null,
       color: 0x666666,
+      exists: World.FOUND,
       type: MeshData.VOXEL,
     };
 

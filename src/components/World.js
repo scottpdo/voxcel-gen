@@ -3,6 +3,7 @@
 import React, { Component, SyntheticEvent } from 'react';
 import * as firebase from 'firebase';
 import _ from 'lodash';
+import md5 from 'md5';
 
 // import CONFIG from '../config';
 import Manager from './Manager';
@@ -64,6 +65,11 @@ export default class World extends Component<Props, State> {
   viewHistory: Function;
   world: string;
 
+  static BAD_PASSWORD = -2;
+  static NOT_FOUND = -1;
+  static INDETERMINATE = 0;
+  static FOUND = 1;
+
   constructor() {
 
     super();
@@ -72,7 +78,7 @@ export default class World extends Component<Props, State> {
       action: null,
       color: 0x666666,
       displayName: "",
-      exists: 0, // indeterminate... -1 = does not exist, 1 = exists
+      exists: World.INDETERMINATE,
       type: MeshData.VOXEL,
       viewingByPlayer: false,
       viewingHistory: false
@@ -98,41 +104,43 @@ export default class World extends Component<Props, State> {
     
     // set user
     Voxelizer.setUser(this.props.manager.get('user'));
-    
-    // trigger worldChange for admin
-    this.props.manager.trigger('worldChange', this);
-
-    // add managerial listeners
-    this.props.manager.on('colorChange', c => {
-      this.setState({ color: c.color });
-    })
-    .on('chooseColor', c => {
-      this.setState({ action: 'chooseColor' });
-    })
-    .on('typeChange', this.typeChange)
-    .on('viewByPlayer', this.viewByPlayer)
-    .on('viewHistory', this.viewHistory);
 
     this.world = this.props.match.params.world;
 
     this.props.db.ref('worldIndex/' + this.world).once('value', (snapshot) => {
+
+      const value = snapshot.val();
+      
       // if no value, then it doesn't exist, serve 404
-      if (_.isNil(snapshot.val())) return this.setState({ exists: -1 });
+      if (_.isNil(value)) return this.setState({ exists: World.NOT_FOUND });
+      
+      /* TRANSITIONING FROM LEGACY:
+       * Used to have string as snapshot.val() that was displayName...
+       * Now snapshot.val() is an object with name and (optional) password 
+       */
+      const displayName = _.isString(value) ? value : value.name;
+      const password = _.isString(value) ? null : value.password;
+
+      if (!_.isNil(password)) {
+        const message = "This world is password protected. Enter the password to access this world:";
+        const pw = prompt(message);
+
+        // if a bad password, exit
+        if (_.isNil(pw) || md5(pw) !== password) return this.setState({ exists: World.BAD_PASSWORD });
+      }
+
       // if it exists, we're good to go and initialize
       this.setState({ 
-        displayName: snapshot.val(),
-        exists: 1 
+        displayName,
+        exists: World.FOUND
       }, this.init);
     });
-
-    setTimeout(this.screenshot, 5000);
-
-    this.screenshotInterval = setInterval(this.screenshot, 30 * 1000);
-
-    window.addEventListener('resize', this.onResize);
   }
 
   componentWillUnmount() {
+
+    // if the world wasn't found, we don't need to unmount anything
+    if (this.state.exists !== World.FOUND) return;
 
     clearInterval(this.screenshotInterval);
 
@@ -147,7 +155,7 @@ export default class World extends Component<Props, State> {
       .off('viewByPlayer')
       .off('viewHistory');
 
-    this.setState({ exists: 0 });
+    this.setState({ exists: World.INDETERMINATE });
 
     window.removeEventListener('resize', this.onResize);
     
@@ -155,6 +163,20 @@ export default class World extends Component<Props, State> {
   }
 
   init() {
+    
+    // trigger worldChange for admin
+    this.props.manager.trigger('worldChange', this);
+
+    // add managerial listeners
+    this.props.manager.on('colorChange', c => {
+      this.setState({ color: c.color });
+    })
+    .on('chooseColor', c => {
+      this.setState({ action: 'chooseColor' });
+    })
+    .on('typeChange', this.typeChange)
+    .on('viewByPlayer', this.viewByPlayer)
+    .on('viewHistory', this.viewHistory);
 
     // set up reference to this world and canvas
     this.dataRef = this.props.db.ref('worlds/' + this.world);
@@ -253,6 +275,12 @@ export default class World extends Component<Props, State> {
 
     // not sure why, but can't add this to <canvas> in render()
     this.refs.canvas.addEventListener('wheel', this.draw);
+    
+    setTimeout(this.screenshot, 5000);
+
+    this.screenshotInterval = setInterval(this.screenshot, 30 * 1000);
+
+    window.addEventListener('resize', this.onResize);
 
 		this.draw();
     
@@ -294,7 +322,7 @@ export default class World extends Component<Props, State> {
   onResize() {
     
     // only run if we've found a world
-    if (this.state.exists < 1) return;
+    if (this.state.exists !== World.FOUND) return;
     
     const WIDTH = this.refs.container.clientWidth;
     const HEIGHT = this.refs.container.clientHeight;
@@ -511,7 +539,7 @@ export default class World extends Component<Props, State> {
 
     const storage = this.props.storage.ref('images/' + this.world);
 
-    if (this.state.exists < 1) return;
+    if (this.state.exists !== World.FOUND) return;
 
     // don't take screenshot if viewing history or viewing by player --
     // will not represent the world as it `is`
@@ -631,11 +659,20 @@ export default class World extends Component<Props, State> {
       transform: 'translateY(-50%)'
     };
 
-    if (this.state.exists === 0) 
-      return <div style={textStyle}>Loading...</div>;
-    if (this.state.exists === -1) 
-      return <div style={textStyle}>404 - Couldn't find world.</div>;
-    
+    switch (this.state.exists) {
+      case World.INDETERMINATE:
+        return <div style={textStyle}>Loading...</div>;
+      case World.NOT_FOUND:
+        return <div style={textStyle}>404 - Couldn't find world.</div>;
+      case World.BAD_PASSWORD:
+        return (
+          <div style={textStyle}>
+            That is not the password to this world.<br />
+            Refresh the page if you would like to try again.
+          </div>
+        );
+    }
+
     const style = {
       cursor: this.state.action === 'chooseColor' ? 'copy' : 'default',
       height: '100%',
