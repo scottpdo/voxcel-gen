@@ -632,11 +632,8 @@ export default class World extends Component<Props, State> {
         const n = snapshot.numChildren();
         if (n === 0) return this.setState({ viewingHistory: false });
 
-        let startTime = -1;
-        let endTime = -1;
         let children = [];
         let actions = [];
-        let i = 0;
         
         snapshot.forEach(child => {
 
@@ -653,9 +650,8 @@ export default class World extends Component<Props, State> {
 
         children.forEach((child, i) => {
 
-          const time = child.val().time;
           const timeout = i * factor;
-          let action;
+          let action = () => {}; // default noop
 
           if (actions[i] === 'added') {
             action = this.renderVoxel.bind(this, child, true);
@@ -702,6 +698,7 @@ export default class World extends Component<Props, State> {
             Refresh the page if you would like to try again.
           </div>
         );
+      default:
     }
 
     const style = {
