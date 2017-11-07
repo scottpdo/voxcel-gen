@@ -104,7 +104,6 @@ export default class Voxelizer {
     const z = (data.z * UNIT) + UNIT / 2;
     const color = data.hasOwnProperty('color') ? data.color : 0x666666;
     const rotation = data.rotation;
-    const time = data.time;
 
     let mesh;
 
