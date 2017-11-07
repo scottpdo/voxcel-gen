@@ -632,38 +632,48 @@ export default class World extends Component<Props, State> {
         const n = snapshot.numChildren();
         if (n === 0) return this.setState({ viewingHistory: false });
 
-        let children = [];
         let actions = [];
         
         snapshot.forEach(child => {
 
-          children.push(child);
-          actions.push('added');
+          actions.push({
+            action: 'added',
+            child,
+            time: child.val().time
+          });
 
           if (_.isNumber(child.val().deleted)) {
-            children.push(child);
-            actions.push('deleted');
+            actions.push({
+              action: 'deleted',
+              child,
+              time: child.val().deleted
+            });
           }
+
+          // with each child, have to make sure everything is sorted by time --
+          // since a given child might be added, others added, and then the first
+          // deleted later
+          actions = _.sortBy(actions, [o => o.time]);
         });
 
-        const factor = duration / children.length;
+        const factor = duration / actions.length;
 
-        children.forEach((child, i) => {
+        actions.forEach((data, i) => {
 
           const timeout = i * factor;
           let action = () => {}; // default noop
 
-          if (actions[i] === 'added') {
-            action = this.renderVoxel.bind(this, child, true);
-          } else if (actions[i] === 'deleted') {
-            action = this.unRenderVoxel.bind(this, child);
+          if (data.action === 'added') {
+            action = this.renderVoxel.bind(this, data.child, true);
+          } else if (data.action === 'deleted') {
+            action = this.unRenderVoxel.bind(this, data.child);
           }
 
           setTimeout(() => {
             action();
             this.update();
             this.draw();
-            this.setState({ historyStep: (i + 1) / children.length });
+            this.setState({ historyStep: (i + 1) / actions.length });
           }, timeout);
         });
 
@@ -679,21 +689,14 @@ export default class World extends Component<Props, State> {
 
   render() {
 
-    const textStyle = { 
-      fontSize: 24,
-      textAlign: 'center',
-      top: '50%',
-      transform: 'translateY(-50%)'
-    };
-
     switch (this.state.exists) {
       case World.INDETERMINATE:
-        return <div style={textStyle}>Loading...</div>;
+        return <div className="world__text">Loading...</div>;
       case World.NOT_FOUND:
-        return <div style={textStyle}>404 - Couldn't find world.</div>;
+        return <div className="world__text">404 - Couldn't find world.</div>;
       case World.BAD_PASSWORD:
         return (
-          <div style={textStyle}>
+          <div className="world__text">
             That is not the password to this world.<br />
             Refresh the page if you would like to try again.
           </div>
