@@ -128,9 +128,10 @@ export default class Worlds extends Component<Props, State> {
       
       const val = snapshot.val();
 
-      // if name not taken, add it to the worlds
+      // if name not taken, add it to the worlds and redirect
       if (_.isNil(val)) {
         this.dataRef.child(slug).set({ name, password });
+        window.location.href = '/world/' + slug;
       // otherwise, ask for a new name
       } else {
         this.addWorld("There is already a world with that name. Try another!", e);

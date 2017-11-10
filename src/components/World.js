@@ -689,19 +689,12 @@ export default class World extends Component<Props, State> {
 
   render() {
 
-    switch (this.state.exists) {
-      case World.INDETERMINATE:
-        return <div className="world__text">Loading...</div>;
-      case World.NOT_FOUND:
-        return <div className="world__text">404 - Couldn't find world.</div>;
-      case World.BAD_PASSWORD:
-        return (
-          <div className="world__text">
-            That is not the password to this world.<br />
-            Refresh the page if you would like to try again.
-          </div>
-        );
-      default:
+    if (this.state.exists !== World.FOUND) {
+      let texts = {};
+      texts[World.INDETERMINATE] = "Loading...";
+      texts[World.NOT_FOUND] = "404 - Couldn't find world.";
+      texts[World.BAD_PASSWORD] = "That is not the password to this world. Refresh the page if you would like to try again."
+      return <div className="world__text">{texts[this.state.exists]}</div>;
     }
 
     const style = {
@@ -713,7 +706,6 @@ export default class World extends Component<Props, State> {
     };
 
     const borderStyle = {
-      transition: '0.1s',
       width: this.state.viewingHistory ? (this.state.historyStep * 100).toString() + '%' : 0
     };
     
