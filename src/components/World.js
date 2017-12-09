@@ -16,7 +16,7 @@ import WorldHistory from './WorldHistory';
 
 import '../css/World.css';
 
-const Voxelizer = new VoxelizerCtr();
+let Voxelizer = new VoxelizerCtr();
 
 type Props = {
   db: firebase.database,
@@ -123,8 +123,9 @@ export default class World extends Component<Props, State> {
   }
 
   componentDidMount() {
-    
-    // set user
+
+    // (re)set Voxelizer, set user
+    Voxelizer = new VoxelizerCtr();
     Voxelizer.setUser(this.props.manager.get('user'));
 
     this.world = this.props.match.params.world;
