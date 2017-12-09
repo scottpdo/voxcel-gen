@@ -103,7 +103,7 @@ export default class WorldHistory {
     
     if (index === 0 || index > this.data.length || this.paused) {
       if (index > this.data.length) {
-        this.index = index;
+        this.paused = true;
         done();
       }
       return;

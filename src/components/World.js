@@ -645,7 +645,9 @@ export default class World extends Component<Props, State> {
         .forEach(obj => { this.scene.remove(obj) });
     }
 
-    this.History.replay();
+    this.rolloverMesh.visible = false;
+
+    this.History.replay(this.iter);
     
     this.update();
     this.draw();
