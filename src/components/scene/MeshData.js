@@ -8,7 +8,7 @@ export default class MeshData {
   x: number;
   y: number;
   z: number;
-  time: number;     // must be created at some time
+  time: number;     // must be created at some time (Unix timestamp)
   deleted: ?number; // not necessarily deleted
   color: ?number;
   rotation: ?string;

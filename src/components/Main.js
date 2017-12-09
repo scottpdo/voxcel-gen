@@ -35,7 +35,9 @@ export default class Main extends Component<Props, State> {
 		
 		return (
 			<div className="main">
-				<Route exact path="/" render={() => <Worlds db={this.props.db} storage={this.props.storage} />} />
+				<Route exact path="/" render={() => {
+					return <Worlds db={this.props.db} storage={this.props.storage} manager={this.props.manager} />;
+				}} />
 				<Route path="/instructions" component={Instructions} />
 				<Route path="/sandbox" render={(props) => <Sandbox manager={this.props.manager} {...props} />} />
 				<Route path="/world/:world" render={(props) => <World db={this.props.db} manager={this.props.manager} storage={this.props.storage} {...props} />} />

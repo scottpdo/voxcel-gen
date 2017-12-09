@@ -1,16 +1,29 @@
 // @flow
 
+import * as THREE from 'three';
 import MeshData from './MeshData';
 
 const UNIT = 50;
 
-const THREE = require('three');
-
 export default class Voxelizer {
 
+  colorIndex: number = 0;
   materials: Object;
   UNIT: number;
   user: string;
+  userLookup: Object = {};
+  
+  static COLORS = [
+    '4DCCBD', // medium turquoise
+    '231651', // russian violet
+    '2374AB', // lapis lazuli
+    'FF8484', // tulip
+    '5BC0EB', // blue jeans
+    'FDE74C', // "gargoyle gas" (!)
+    '9BC53D', // android green
+    'C3423F', // english vermilion
+    '211A1E', // eerie black
+  ];
 
   static VOX_GEO = new THREE.BoxGeometry(UNIT, UNIT, UNIT);
 
@@ -28,6 +41,20 @@ export default class Voxelizer {
         color: 0x666666
       })
     };
+  }
+
+  addUser(user: string) {
+    const color = parseInt(Voxelizer.COLORS[this.colorIndex], 16);
+    this.userLookup[user] = new THREE.MeshLambertMaterial({ color });
+    this.colorIndex++;
+    if (this.colorIndex === Voxelizer.COLORS.length) {
+      console.warn("Number of users exceeded number of colors");
+      this.colorIndex = 0;
+    }
+  }
+
+  hasUser(user: string): boolean {
+    return this.userLookup.hasOwnProperty(user);
   }
 
   setUser(user: string) {
@@ -97,15 +124,21 @@ export default class Voxelizer {
     return mesh;
   }
 
-  dataToMesh(data: MeshData): THREE.Mesh {
+  /**
+   * Convert data into a mesh, ready to be placed into the scene.
+   * @param {*} data 
+   */
+  dataToMesh(data: MeshData, viewingByPlayer: boolean): THREE.Mesh {
     
     const x = (data.x * UNIT) + UNIT / 2;
     const y = (data.y * UNIT) + UNIT / 2;
     const z = (data.z * UNIT) + UNIT / 2;
-    const color = data.hasOwnProperty('color') ? data.color : 0x666666;
+
+    let color = data.hasOwnProperty('color') ? data.color : 0x666666;
+
     const rotation = data.rotation;
 
-    let mesh;
+    let mesh: THREE.Mesh;
 
     if (data.hasOwnProperty('type')) {
       if (data.type === MeshData.SPHERE) {
@@ -120,6 +153,8 @@ export default class Voxelizer {
       mesh = this.voxel(color);
     }
 
+    if (viewingByPlayer) mesh.material = this.userLookup[data.user];
+
     mesh.position.set(x, y, z);
 
     if (rotation === "x") mesh.rotation.x = Math.PI / 2;
@@ -127,6 +162,7 @@ export default class Voxelizer {
     if (rotation === "z") mesh.rotation.z = Math.PI / 2;
 
     // carry through key, user, and time
+    mesh.name = data.key;
     mesh.userData.key = data.key;
     mesh.userData.user = data.user;
     mesh.userData.time = data.time || -1;
@@ -134,6 +170,10 @@ export default class Voxelizer {
     return mesh;
   }
 
+  /**
+   * Convert a mesh into data, to modify in database.
+   * @param {*} mesh 
+   */
   meshToData(mesh: THREE.Mesh): MeshData {
 
     const p = mesh.position;
@@ -159,7 +199,7 @@ export default class Voxelizer {
   }
 
   /**
-   * For a given point, get its 6 neighbors (north south east west up down)
+   * For a given point, get its 6 neighbors (north south east west up down).
    * @param {*} pt 
    */
   neighbors(pt: THREE.Vector3): Array<THREE.Vector3> {

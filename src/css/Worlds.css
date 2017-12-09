@@ -13,12 +13,21 @@
   float: right;
 }
 
+.worlds__options {
+  margin-bottom: 6px;
+}
+
+  .worlds__options span:hover {
+    color: #999;
+    cursor: pointer;
+  }
+
 .worlds__ul {
   margin: 0;
   padding: 0;
 }
 
-.worlds__world {
+.worlds__ul--blocks .worlds__world {
   background: #333;
   border-radius: 2px;
   color: #fff;
@@ -27,14 +36,17 @@
   float: left;
   margin: 0 20px 20px 0;
   width: 30%;
-  transition: 0.15s;
+}
+
+.worlds__ul--rows .worlds__world {
+  list-style-type: none;
 }
 
   .worlds__world:nth-child(3n + 1) {
     clear: left;
   }
 
-  .worlds__img {
+  .worlds__ul--blocks .worlds__img {
     background-size: cover;
     background-position: 50% 50%;
     padding-bottom: 50%;
@@ -43,13 +55,38 @@
     transition: 0.15s;
   }
 
-  .worlds__world a,
-  .worlds__world span { 
+  .worlds__ul--rows .worlds__img {
+    display: none;
+  }
+
+  .worlds__ul--blocks .worlds__world a { 
     color: inherit; 
     display: block;
     padding: 10px;
     text-decoration: none;
   }
+
+  .worlds__ul--rows .worlds__world a { 
+    background: #eee;
+    color: inherit; 
+    display: block;
+    margin-bottom: 5px;
+    padding: 5px;
+    text-decoration: none;
+  }
+
+    .worlds__ul--rows .worlds__world a:hover {
+      background: white;
+    }
+
+  .worlds__ul--blocks .worlds__delete { display: none; }
+  .worlds__ul--rows .worlds__delete {
+    display: block;
+    float: right;
+  }
+    .worlds__ul--rows .worlds__delete:hover {
+      color: red;
+    }
 
 .worlds__world:hover {
   background: #888;

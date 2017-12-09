@@ -20,7 +20,9 @@ type Props = {
 
 type State = {
   color: number,
-  world: ?World
+  displayName: string,
+  i: number,
+  world: World | null
 };
 
 export default class Admin extends Component<Props, State> {
@@ -28,11 +30,12 @@ export default class Admin extends Component<Props, State> {
   chooseColor: Function;
   colorChange: Function;
   displayName: Function;
+  iter: Function;
   leaveWorld: Function;
+  toggleHistory: Function;
   typeChange: Function;
   updateName: Function;
   viewByPlayer: Function;
-  viewHistory: Function;
 
   constructor() {
 
@@ -41,26 +44,32 @@ export default class Admin extends Component<Props, State> {
     this.state = {
       color: 0x666666,
       displayName: "",
+      i: 0,
       world: null
     };
 
     this.chooseColor = this.chooseColor.bind(this);
     this.colorChange = this.colorChange.bind(this);
     this.displayName = this.displayName.bind(this);
+    this.iter = this.iter.bind(this);
     this.leaveWorld = this.leaveWorld.bind(this);
+    this.toggleHistory = this.toggleHistory.bind(this);
     this.typeChange = this.typeChange.bind(this);
     this.updateName = this.updateName.bind(this);
     this.viewByPlayer = this.viewByPlayer.bind(this);
-    this.viewHistory = this.viewHistory.bind(this);
   }
 
   componentDidMount() {
 
-    this.props.manager.on('worldChange', world => {
+    this.props.manager.on("worldChange", world => {
       this.setState({ world });
-    }).on('colorChosen', c => {
-      this.refs.colorpicker.value = '#' + c.color.toString(16);
-    }).on('updateDirectory', this.displayName);
+    }).on("colorChosen", c => {
+      this.refs.colorpicker.value = "#" + c.color.toString(16).padStart(6, "0");
+    }).on("updateDirectory", this.displayName);
+  }
+
+  iter() {
+    this.setState({ i: this.state.i + 1 });
   }
 
   leaveWorld() {
@@ -69,7 +78,7 @@ export default class Admin extends Component<Props, State> {
   
   displayName() {
     
-    const userId = this.props.manager.get('user');
+    const userId = this.props.manager.get("user");
     const directory = this.props.directory;
 
     this.refs.displayName.value = directory.get(userId);
@@ -77,35 +86,40 @@ export default class Admin extends Component<Props, State> {
 
   colorChange(e: Event) {
     const color = parseInt(this.refs.colorpicker.value.slice(1), 16);
-    this.props.manager.trigger('colorChange', { color });
+    this.props.manager.trigger("colorChange", { color });
   }
 
   typeChange(e: Event) {
     const type = parseInt(this.refs.typeSelect.value, 10);
-    this.props.manager.trigger('typeChange', { type });
+    this.props.manager.trigger("typeChange", { type });
   }
 
   chooseColor(e: Event) {
-    this.props.manager.trigger('chooseColor');
+    this.props.manager.trigger("chooseColor");
   }
 
   updateName() {
 
     const name = this.refs.displayName.value;
-    const id = this.props.manager.get('user');
+    const id = this.props.manager.get("user");
 
-    this.props.db.ref('users/').child(id).set(name);
+    this.props.db.ref("users/").child(id).set(name);
   }
 
   viewByPlayer(e: Event) {
-    this.props.manager.trigger('viewByPlayer');
+    this.props.manager.trigger("viewByPlayer");
   }
 
-  viewHistory(e: Event) {
-    this.props.manager.trigger('viewHistory');
+  toggleHistory(e: Event) {
+    const cb = this.iter;
+    this.props.manager.trigger("toggleHistory", { cb });
   }
 
   render() {
+
+    const world = this.state.world;
+    const exists = world instanceof World && world.state.exists === World.FOUND;
+    const isSandbox = world instanceof Sandbox;
 
     const colorpicker = (
       <div>
@@ -126,9 +140,11 @@ export default class Admin extends Component<Props, State> {
         onClick={this.chooseColor}>Choose Color</button>
     );
 
-    const viewHistory = (
-      <button className="admin__button admin__button--small" onClick={this.viewHistory}>View History</button>
-    );
+    const toggleHistory = world instanceof World ? (
+      <button className="admin__button admin__button--small" onClick={this.toggleHistory}>
+        {world.state.viewingHistory ? "Exit History" : "Enter History"}
+      </button>
+    ) : null;
 
     const viewByPlayer = (
       <div>
@@ -156,16 +172,13 @@ export default class Admin extends Component<Props, State> {
       </div>
     );
 
-    const world = this.state.world;
-    const exists = world !== null && world.state.exists === World.FOUND;
-    const isSandbox = world instanceof Sandbox;
-
-    const worldName = exists ? world.world : "";
+    const worldName = world instanceof World ? world.world : "";
 
     return (
       <div className="admin">
         <Link to="/" className="admin__button" onClick={this.leaveWorld}>Main</Link>
 				<Route exact path="/" render={() => <Link to="/sandbox" className="admin__button">Sandbox</Link>} />
+        <Route path="/instructions" render={() => <Link to="/sandbox" className="admin__button">Sandbox</Link>} />
         <label className="admin__label" htmlFor="display-name">Your name:</label>
         <input 
           className="admin__input" 
@@ -176,7 +189,7 @@ export default class Admin extends Component<Props, State> {
         {exists ? colorpicker : null}
         {exists ? eyeDropper : null}
         {exists ? typeSelect : null}
-        {exists && !isSandbox ? viewHistory : null}
+        {exists && !isSandbox ? toggleHistory : null}
         {exists && !isSandbox ? viewByPlayer : null}
         {exists && !isSandbox ? <Chat db={this.props.db} world={worldName} directory={this.props.directory} /> : null}
       </div>
