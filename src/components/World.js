@@ -2,22 +2,21 @@
 
 import React, { Component, SyntheticEvent } from 'react';
 import * as firebase from 'firebase';
+import * as THREE from 'three';
 import _ from 'lodash';
 import md5 from 'md5';
 
-// import CONFIG from '../config';
 import Manager from './Manager';
 import stage from './scene/stage';
 import _Camera from './scene/Camera';
 import VoxelizerCtr from './scene/Voxelizer';
 import MeshData from './scene/MeshData';
 import Objects from './scene/Objects';
+import WorldHistory from './WorldHistory';
 
 import '../css/World.css';
 
-const THREE = require('three');
-
-const Voxelizer = new VoxelizerCtr();
+let Voxelizer = new VoxelizerCtr();
 
 type Props = {
   db: firebase.database,
@@ -35,7 +34,7 @@ type State = {
   color: number,
   displayName: string,
   exists: number,
-  historyStep: number,
+  i: number,
   type: number,
   viewingByPlayer: boolean,
   viewingHistory: boolean
@@ -45,13 +44,15 @@ export default class World extends Component<Props, State> {
 
   camera: THREE.PerspectiveCamera;
   canvas: HTMLCanvasElement;
-  colorIndex: number;
   dataRef: firebase.ref;
   draw: Function;
+  goToHistory: Function;
+  History: WorldHistory = new WorldHistory();
   init: Function;
+  iter: Function;
   mouse: THREE.Vector2;
-  mouseDownCoords: THREE.Vector2;
-  objects: Objects;
+  mouseDownCoords: THREE.Vector2 = new THREE.Vector2(-2, -2);
+  objects: Objects = new Objects();
   onMouseDown: Function;
   onMouseMove: Function;
   onMouseUp: Function;
@@ -59,14 +60,16 @@ export default class World extends Component<Props, State> {
   raycaster: THREE.Raycaster;
   renderer: THREE.WebGlRenderer;
   renderVoxel: Function;
-  rolloverMesh: THREE.Mesh;
+  resetHistory: Function;
+  rolloverMesh: THREE.Mesh = Voxelizer.voxel(0x5555ff, 0.5);
   scene: THREE.Scene;
   screenshot: Function;
   screenshotInterval: number;
+  toggleHistory: Function;
+  toggleHistoryPaused: Function;
   typeChange: Function;
   unRenderVoxel: Function;
   update: Function;
-  userLookup: Object;
   viewByPlayer: Function;
   viewHistory: Function;
   world: string;
@@ -75,18 +78,6 @@ export default class World extends Component<Props, State> {
   static NOT_FOUND = -1;
   static INDETERMINATE = 0;
   static FOUND = 1;
-
-  static COLORS = [
-    '4DCCBD', // medium turquoise
-    '231651', // russian violet
-    '2374AB', // lapis lazuli
-    'FF8484', // tulip
-    '5BC0EB', // blue jeans
-    'FDE74C', // "gargoyle gas" (!)
-    '9BC53D', // android green
-    'C3423F', // english vermilion
-    '211A1E', // eerie black
-  ];
 
   constructor() {
 
@@ -97,34 +88,44 @@ export default class World extends Component<Props, State> {
       color: 0x666666,
       displayName: "",
       exists: World.INDETERMINATE,
-      historyStep: -1,
+      i: 0,
       type: MeshData.VOXEL,
       viewingByPlayer: false,
       viewingHistory: false
     };
 
-    this.colorIndex = 0;
-    this.objects = new Objects();
-    this.userLookup = {};
-
     this.draw = this.draw.bind(this);
+    this.goToHistory = this.goToHistory.bind(this);
     this.init = this.init.bind(this);
+    this.iter = this.iter.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseUp = this.onMouseUp.bind(this);
     this.onResize = this.onResize.bind(this);
     this.renderVoxel = this.renderVoxel.bind(this);
+    this.resetHistory = this.resetHistory.bind(this);
     this.screenshot = this.screenshot.bind(this);
+    this.toggleHistory = this.toggleHistory.bind(this);
+    this.toggleHistoryPaused = this.toggleHistoryPaused.bind(this);
     this.typeChange = this.typeChange.bind(this);
     this.unRenderVoxel = this.unRenderVoxel.bind(this);
     this.update = this.update.bind(this);
     this.viewByPlayer = this.viewByPlayer.bind(this);
     this.viewHistory = this.viewHistory.bind(this);
+
+    this.History.setAdded((data) => {
+      this.renderVoxel(data, true);
+    });
+
+    this.History.setDeleted((data) => {
+      this.unRenderVoxel(data, true);
+    });
   }
 
   componentDidMount() {
-    
-    // set user
+
+    // (re)set Voxelizer, set user
+    Voxelizer = new VoxelizerCtr();
     Voxelizer.setUser(this.props.manager.get('user'));
 
     this.world = this.props.match.params.world;
@@ -136,12 +137,8 @@ export default class World extends Component<Props, State> {
       // if no value, then it doesn't exist, serve 404
       if (_.isNil(value)) return this.setState({ exists: World.NOT_FOUND });
       
-      /* TRANSITIONING FROM LEGACY:
-       * Used to have string as snapshot.val() that was displayName...
-       * Now snapshot.val() is an object with name and (optional) password 
-       */
-      const displayName = _.isString(value) ? value : value.name;
-      const password = _.isString(value) ? null : value.password;
+      const displayName = value.name;
+      const password = value.password;
 
       if (!_.isNil(password)) {
         const message = "This world is password protected. Enter the password to access this world:";
@@ -166,16 +163,15 @@ export default class World extends Component<Props, State> {
 
     clearInterval(this.screenshotInterval);
 
-    // TODO: destroy scene, objects, etc.
     this.dataRef.off();
     
-    // remove colorChange listener
+    // remove manageriallisteners
     this.props.manager
       .off('colorChange')
       .off('chooseColor')
+      .off('toggleHistory')
       .off('typeChange')
-      .off('viewByPlayer')
-      .off('viewHistory');
+      .off('viewByPlayer');
 
     this.setState({ exists: World.INDETERMINATE });
 
@@ -198,7 +194,7 @@ export default class World extends Component<Props, State> {
     })
     .on('typeChange', this.typeChange)
     .on('viewByPlayer', this.viewByPlayer)
-    .on('viewHistory', this.viewHistory);
+    .on('toggleHistory', this.toggleHistory);
 
     // set up reference to this world and canvas
     this.dataRef = this.props.db.ref('worlds/' + this.world);
@@ -207,7 +203,6 @@ export default class World extends Component<Props, State> {
     this.scene = new THREE.Scene();
     stage(this);
 
-    this.rolloverMesh = Voxelizer.voxel(0x5555ff, 0.5);
     this.rolloverMesh.visible = false;
     this.scene.add(this.rolloverMesh);
 
@@ -218,20 +213,38 @@ export default class World extends Component<Props, State> {
     });
     
 		this.renderer.shadowMap.enabled = true;
-		// TODO: this.renderer.setPixelRatio( window.devicePixelRatio );
+		this.renderer.setPixelRatio( window.devicePixelRatio );
     
     this.camera = _Camera(this.scene, this.renderer);
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2(-2, -2); // mouse off canvas by default
-    this.mouseDownCoords = new THREE.Vector2(-2, -2);
     
     this.onResize();
 
     // on subsequent new voxels
-    this.dataRef.on('child_added', child => { this.renderVoxel(child, false); });
+    this.dataRef.on('child_added', child => {
+      
+      const data = MeshData.fromObject(child.key, child.val());
+      
+      if (!this.state.viewingHistory) this.renderVoxel(data); 
+      
+      this.History.update(data, WorldHistory.ADDED);
+      if (data.deleted) this.History.update(data, WorldHistory.DELETED);
+      
+      this.iter();
+    });
 
     // on deleted voxels
-    this.dataRef.on('child_changed', this.unRenderVoxel);
+    this.dataRef.on('child_changed', child => {
+
+      const data = MeshData.fromObject(child.key, child.val());
+
+      if (!this.state.viewingHistory) this.unRenderVoxel(data);
+
+      this.History.update(data, WorldHistory.DELETED);
+
+      this.iter();
+    });
 
     // not sure why, but can't add this to <canvas> in render()
     this.refs.canvas.addEventListener('wheel', this.draw);
@@ -246,28 +259,25 @@ export default class World extends Component<Props, State> {
     
   }
 
-  renderVoxel(child: firebase.child, force: boolean = false) {
+  iter() {
+    this.setState({ i: this.state.i + 1 });
+  }
+
+  renderVoxel(data: MeshData, force: boolean = false) {
     
     // don't render deleted voxels
     // (unless forcing a render)
-    if (!force && _.isNumber(child.val().deleted)) return;
+    if (!force && _.isNumber(data.deleted)) return;
 
-    const data = MeshData.fromObject(child.key, child.val());
-    const mesh = Voxelizer.dataToMesh(data);
-    
-    const user = child.val().user;
+    const mesh = Voxelizer.dataToMesh(data, this.state.viewingByPlayer);
+    const user = data.user;
 
     // always be checking if user is in lookup
     // and if not, add it with a corresponding material
-    if (!_.isNil(user) && !this.userLookup.hasOwnProperty(user)) {
-      const color = parseInt(World.COLORS[this.colorIndex], 16);
-      this.userLookup[user] = new THREE.MeshLambertMaterial({ color });
-      this.colorIndex++;
-      if (this.colorIndex === World.COLORS.length) {
-        console.warn("Number of users exceeded number of colors");
-        this.colorIndex = 0;
-      }
-    }
+
+    // (Flow doesn't handle this well but guaranteed user is a String here)
+    // $FlowFixMe
+    if (_.isString(user) && !Voxelizer.hasUser(user)) Voxelizer.addUser(user);
 
     this.scene.add(mesh);
     this.objects.add(mesh);
@@ -275,28 +285,18 @@ export default class World extends Component<Props, State> {
     this.draw();
   }
 
-  unRenderVoxel(child: firebase.child) {
-    
+  unRenderVoxel(data: MeshData, force: boolean = false) {
+
     // unrender only if deleting
-    if (!_.isNumber(child.val().deleted)) return;
+    // (unless forcing a delete from history)
+    if (!force && !_.isNumber(data.deleted)) return;
 
-    const data = MeshData.fromObject(child.key, child.val());
-    const mesh = Voxelizer.dataToMesh(data);
-    let match = null;
+    const mesh = this.scene.getObjectByName(data.key);
 
-    for (let obj of this.objects.all()) {
-      if (obj.position.equals(mesh.position)) {
-        match = obj;
-        break;
-      }
-    }
-
-    if (match !== null) {
-      match.geometry.dispose();
-      match.material.dispose();
-      this.scene.remove(match);
-      this.objects.remove(match);
-    }
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+    this.scene.remove(mesh);
+    this.objects.remove(mesh);
 
     this.draw();
     
@@ -304,6 +304,7 @@ export default class World extends Component<Props, State> {
 
   draw() {
     
+    this.iter();
     this.renderer.render(this.scene, this.camera);
     this.raycaster.setFromCamera( this.mouse, this.camera );
   }
@@ -323,7 +324,7 @@ export default class World extends Component<Props, State> {
       // if viewing by user, switch out the material
       if (this.state.viewingByPlayer) {
         if (!_.isNil(user)) {
-          object.material = this.userLookup[user];
+          object.material = Voxelizer.userLookup[user];
         } else {
           object.visible = false;
         }
@@ -390,7 +391,6 @@ export default class World extends Component<Props, State> {
 
       this.rolloverMesh.visible = true;
 
-      // Beams: TODO
       if (this.state.type === MeshData.BEAM) {
 
         const closestPt = closestObj.point.clone().add(closestObj.face.normal);
@@ -614,118 +614,114 @@ export default class World extends Component<Props, State> {
     });
   }
 
+  goToHistory(e: SyntheticEvent<HTMLInputElement>) {
+    
+    const index = +e.target.value;
+
+    this.History.paused = true;
+
+    this.History.goto(index);
+
+    this.iter();
+    this.update();
+    this.draw();
+  }
+
+  toggleHistory(params: Object) {
+
+    const viewingHistory = !this.state.viewingHistory;
+
+    this.setState({ viewingHistory }, () => {
+      viewingHistory ? this.viewHistory() : this.resetHistory();
+      params.cb();
+    });
+  }
+
   viewHistory() {
 
-    const duration = 10000;
-
-    this.rolloverMesh.visible = false;
-
-    this.setState({ viewingHistory: true }, () => {
-
-      // remove all scene objects except groundPlane
+    // remove all scene objects except groundPlane
+    if (!this.History.inProgress()) {
       this.objects.all()
         .filter(obj => obj.name !== 'groundPlane')
         .forEach(obj => { this.scene.remove(obj) });
+    }
 
-      this.dataRef.once('value', snapshot => {
-        
-        const n = snapshot.numChildren();
-        if (n === 0) return this.setState({ viewingHistory: false });
+    this.rolloverMesh.visible = false;
 
-        let actions = [];
-        
-        snapshot.forEach(child => {
+    this.History.replay(this.iter);
+    
+    this.update();
+    this.draw();
+  }
 
-          actions.push({
-            action: 'added',
-            child,
-            time: child.val().time
-          });
+  resetHistory() {
+    // remove all scene objects except groundPlane
+    this.objects.all()
+      .filter(obj => obj.name !== 'groundPlane')
+      .forEach(obj => { this.scene.remove(obj) });
 
-          if (_.isNumber(child.val().deleted)) {
-            actions.push({
-              action: 'deleted',
-              child,
-              time: child.val().deleted
-            });
-          }
+    this.History.reset();
 
-          // with each child, have to make sure everything is sorted by time --
-          // since a given child might be added, others added, and then the first
-          // deleted later
-          actions = _.sortBy(actions, [o => o.time]);
-        });
+    this.update();
+    this.draw();
+  }
 
-        const factor = duration / actions.length;
+  toggleHistoryPaused(startIndex: number) {
 
-        actions.forEach((data, i) => {
-
-          const timeout = i * factor;
-          let action = () => {}; // default noop
-
-          if (data.action === 'added') {
-            action = this.renderVoxel.bind(this, data.child, true);
-          } else if (data.action === 'deleted') {
-            action = this.unRenderVoxel.bind(this, data.child);
-          }
-
-          setTimeout(() => {
-            action();
-            this.update();
-            this.draw();
-            this.setState({ historyStep: (i + 1) / actions.length });
-          }, timeout);
-        });
-
-        setTimeout(() => {
-          this.setState({ viewingHistory: false });
-        }, duration + 1000);
-      });
-
-      this.draw();
-
-    });
+    this.History.paused = !this.History.paused;
+    if (!this.History.paused) this.viewHistory();
+    this.iter();
   }
 
   render() {
 
-    switch (this.state.exists) {
-      case World.INDETERMINATE:
-        return <div className="world__text">Loading...</div>;
-      case World.NOT_FOUND:
-        return <div className="world__text">404 - Couldn't find world.</div>;
-      case World.BAD_PASSWORD:
-        return (
-          <div className="world__text">
-            That is not the password to this world.<br />
-            Refresh the page if you would like to try again.
-          </div>
-        );
-      default:
+    if (this.state.exists !== World.FOUND) {
+      let texts = {};
+      texts[World.INDETERMINATE] = "Loading...";
+      texts[World.NOT_FOUND] = "404 - Couldn't find world.";
+      texts[World.BAD_PASSWORD] = "That is not the password to this world. Refresh the page if you would like to try again."
+      return <div className="world__text">{texts[this.state.exists]}</div>;
     }
 
-    const style = {
-      cursor: this.state.action === 'chooseColor' ? 'copy' : 'default'
-    };
+    let containerClass = "world world__container";
+    if (this.state.action === "chooseColor") containerClass += " world__container--copy";
+    if (this.state.viewingHistory) containerClass += " world__container--history";
 
     const worldHistoryStyle = {
       display: this.state.viewingHistory ? 'block' : 'none'
     };
-
-    const borderStyle = {
-      transition: '0.1s',
-      width: this.state.viewingHistory ? (this.state.historyStep * 100).toString() + '%' : 0
-    };
     
+    // TODO:
+    // break out world history controls into separate component
     return (
-      <div style={style} ref="container" className="world__container">
+      <div ref="container" className={containerClass}>
         <canvas ref="canvas" 
           onMouseDown={this.onMouseDown} 
           onMouseMove={this.onMouseMove}
           onMouseUp={this.onMouseUp} />
         <h1 className="world__name">{this.state.displayName}</h1>
-        <div className="world__history" style={worldHistoryStyle}>
-          <div className="world__history--border" style={borderStyle}></div>
+        <div className="world__history__controls" style={worldHistoryStyle}>
+          <label htmlFor="replaySpeed">Replay Speed:</label><br />
+          <input 
+            className="world__history__speed" 
+            id="replaySpeed"
+            type="range" min="20" max="500" 
+            defaultValue={this.History.delay} 
+            onChange={(e) => { this.History.delay = +e.target.value; }}/>
+          <div 
+            className={"world__history--playpause icon-" + (this.History.paused ? "play" : "pause")} 
+            onClick={this.toggleHistoryPaused}></div>
+        </div>
+        <div className="world__history__container" style={worldHistoryStyle}>
+          <input 
+            className="world__history" 
+            type="range" 
+            min="0" 
+            max={this.History.data.length} 
+            step="1"
+            style={worldHistoryStyle} 
+            value={this.History.index} 
+            onChange={this.goToHistory} />
         </div>
       </div>
     );
