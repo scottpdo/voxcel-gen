@@ -1,0 +1,76 @@
+.history {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+}
+
+.history__controls {
+  background: #fff;
+  box-shadow: 0 0 4px #666;
+  padding: 10px;
+  position: absolute;
+  top: 60px;
+  right: 20px;
+}
+
+  .history__controls label {
+    font-size: 14px;
+  }
+
+.history__range__container {
+  background: #fff;
+  box-shadow: 0 0 4px #666;
+  padding: 5px;
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 300px;
+}
+
+.history__range {
+  display: block;
+  margin: 0;
+  width: 100%;
+}
+
+.history__speed {
+  direction: rtl;
+}
+
+.history--playpause {
+  background: #eee;
+  color: #555;
+  cursor: pointer;
+  display: block;
+  margin: 10px auto;
+  font-size: 24px;
+  padding-top: 3px;
+  height: 30px;
+  text-align: center;
+  width: 30px;
+}
+
+  .history--playpause:hover {
+    color: #888;
+  }
+
+.history--border {
+  background: red;
+  height: 3px;
+  transition: 0.1s;
+  -webkit-transition: 0.1s;
+  -moz-transition: 0.1s;
+}
+
+.history--indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 20px;
+  height: 20px;
+  width: 20px;
+  background: #fff;
+  border: 2px solid black;
+  transform: translateX(-50%) translateY(-50%);
+}

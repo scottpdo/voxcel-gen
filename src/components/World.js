@@ -1,6 +1,6 @@
 // @flow
 
-import React, { Component, SyntheticEvent } from 'react';
+import React, { Component } from 'react';
 import * as firebase from 'firebase';
 import * as THREE from 'three';
 import _ from 'lodash';
@@ -13,6 +13,7 @@ import VoxelizerCtr from './scene/Voxelizer';
 import MeshData from './scene/MeshData';
 import Objects from './scene/Objects';
 import WorldHistory from './WorldHistory';
+import HistoryControls from './HistoryControls';
 
 import '../css/World.css';
 
@@ -46,8 +47,8 @@ export default class World extends Component<Props, State> {
   canvas: HTMLCanvasElement;
   dataRef: firebase.ref;
   draw: Function;
-  goToHistory: Function;
   History: WorldHistory = new WorldHistory();
+  historyUpdate: Function;
   init: Function;
   iter: Function;
   mouse: THREE.Vector2;
@@ -66,7 +67,6 @@ export default class World extends Component<Props, State> {
   screenshot: Function;
   screenshotInterval: number;
   toggleHistory: Function;
-  toggleHistoryPaused: Function;
   typeChange: Function;
   unRenderVoxel: Function;
   update: Function;
@@ -95,7 +95,7 @@ export default class World extends Component<Props, State> {
     };
 
     this.draw = this.draw.bind(this);
-    this.goToHistory = this.goToHistory.bind(this);
+    this.historyUpdate = this.historyUpdate.bind(this);
     this.init = this.init.bind(this);
     this.iter = this.iter.bind(this);
     this.onMouseDown = this.onMouseDown.bind(this);
@@ -106,7 +106,6 @@ export default class World extends Component<Props, State> {
     this.resetHistory = this.resetHistory.bind(this);
     this.screenshot = this.screenshot.bind(this);
     this.toggleHistory = this.toggleHistory.bind(this);
-    this.toggleHistoryPaused = this.toggleHistoryPaused.bind(this);
     this.typeChange = this.typeChange.bind(this);
     this.unRenderVoxel = this.unRenderVoxel.bind(this);
     this.update = this.update.bind(this);
@@ -614,13 +613,7 @@ export default class World extends Component<Props, State> {
     });
   }
 
-  goToHistory(e: SyntheticEvent<HTMLInputElement>) {
-    
-    const index = +e.target.value;
-
-    this.History.paused = true;
-
-    this.History.goto(index);
+  historyUpdate() {
 
     this.iter();
     this.update();
@@ -666,13 +659,6 @@ export default class World extends Component<Props, State> {
     this.draw();
   }
 
-  toggleHistoryPaused(startIndex: number) {
-
-    this.History.paused = !this.History.paused;
-    if (!this.History.paused) this.viewHistory();
-    this.iter();
-  }
-
   render() {
 
     if (this.state.exists !== World.FOUND) {
@@ -685,14 +671,11 @@ export default class World extends Component<Props, State> {
 
     let containerClass = "world world__container";
     if (this.state.action === "chooseColor") containerClass += " world__container--copy";
-    if (this.state.viewingHistory) containerClass += " world__container--history";
 
     const worldHistoryStyle = {
       display: this.state.viewingHistory ? 'block' : 'none'
     };
     
-    // TODO:
-    // break out world history controls into separate component
     return (
       <div ref="container" className={containerClass}>
         <canvas ref="canvas" 
@@ -700,29 +683,11 @@ export default class World extends Component<Props, State> {
           onMouseMove={this.onMouseMove}
           onMouseUp={this.onMouseUp} />
         <h1 className="world__name">{this.state.displayName}</h1>
-        <div className="world__history__controls" style={worldHistoryStyle}>
-          <label htmlFor="replaySpeed">Replay Speed:</label><br />
-          <input 
-            className="world__history__speed" 
-            id="replaySpeed"
-            type="range" min="20" max="500" 
-            defaultValue={this.History.delay} 
-            onChange={(e) => { this.History.delay = +e.target.value; }}/>
-          <div 
-            className={"world__history--playpause icon-" + (this.History.paused ? "play" : "pause")} 
-            onClick={this.toggleHistoryPaused}></div>
-        </div>
-        <div className="world__history__container" style={worldHistoryStyle}>
-          <input 
-            className="world__history" 
-            type="range" 
-            min="0" 
-            max={this.History.data.length} 
-            step="1"
-            style={worldHistoryStyle} 
-            value={this.History.index} 
-            onChange={this.goToHistory} />
-        </div>
+        <HistoryControls 
+          history={this.History} 
+          play={this.viewHistory}
+          style={worldHistoryStyle} 
+          update={this.historyUpdate} />
       </div>
     );
   }
