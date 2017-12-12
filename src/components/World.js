@@ -17,6 +17,8 @@ import HistoryControls from './HistoryControls';
 
 import '../css/World.css';
 
+const DPR = window.devicePixelRatio;
+
 let Voxelizer = new VoxelizerCtr();
 
 type Props = {
@@ -212,7 +214,7 @@ export default class World extends Component<Props, State> {
     });
     
 		this.renderer.shadowMap.enabled = true;
-		this.renderer.setPixelRatio( window.devicePixelRatio );
+		this.renderer.setPixelRatio( DPR );
     
     this.camera = _Camera(this.scene, this.renderer);
     this.raycaster = new THREE.Raycaster();
@@ -353,16 +355,16 @@ export default class World extends Component<Props, State> {
     this.draw();
   }
 
-  onMouseMove(e: SyntheticEvent) {
+  onMouseMove(e: SyntheticEvent<*>) {
 
     if (this.state.viewingHistory || this.state.viewingByPlayer) return this.draw();
 
     const rect = this.canvas.getBoundingClientRect();
 
     // $FlowFixMe
-    this.mouse.x = ( (e.clientX - rect.x ) / this.canvas.width ) * 2 - 1;
+    this.mouse.x = ( (e.clientX - rect.x ) / this.canvas.width ) * 2 * DPR - 1;
     // $FlowFixMe
-    this.mouse.y = -( (e.clientY - rect.y ) / this.canvas.height ) * 2 + 1;
+    this.mouse.y = -( (e.clientY - rect.y ) / this.canvas.height ) * 2 * DPR + 1;
 
     if ( this.state.action === 'chooseColor' ) {
       this.rolloverMesh.visible = false;
